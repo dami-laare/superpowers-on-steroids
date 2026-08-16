@@ -2,10 +2,6 @@
   "name": "superpowers-on-steroids",
   "description": "Fork of the Superpowers core skills library with an autonomous, agent-team brainstorming skill: a proxy agent brainstorms with subagents instead of round-tripping to the user",
   "version": "6.3.0",
-  "author": {
-    "name": "Jesse Vincent (fork maintained locally)",
-    "email": "jesse@fsck.com"
-  },
   "homepage": "https://github.com/obra/superpowers",
   "repository": "https://github.com/obra/superpowers",
   "license": "MIT",

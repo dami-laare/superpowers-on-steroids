@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Update the fork's upstream mirror, then replay the customization layer.
+#
+# Prerequisites:
+#   git remote add upstream https://github.com/obra/superpowers.git
+#   git remote set-url origin https://github.com/dami-laare/superpowers-on-steroids.git
+#
+# Usage:
+#   scripts/sync-upstream
+#
+# A rebase conflict is intentional: resolve it while preserving the fork's
+# behavior, run the relevant tests, then use `git rebase --continue`.
+set -euo pipefail
+
+mirror_branch="main"
+custom_branch="steroids"
+
+git diff --quiet && git diff --cached --quiet || {
+  echo "Working tree is not clean; commit or stash changes before syncing." >&2
+  exit 1
+}
+
+git remote get-url upstream >/dev/null || {
+  echo "Missing upstream remote. Add https://github.com/obra/superpowers.git as upstream." >&2
+  exit 1
+}
+
+git fetch upstream --prune --tags
+git fetch origin --prune
+
+git switch "$mirror_branch"
+git merge --ff-only upstream/main
+git push origin "$mirror_branch"
+
+git switch "$custom_branch"
+git rebase "$mirror_branch"
+
+echo "Sync complete. Run the relevant tests, then push with:"
+echo "  git push origin $custom_branch --force-with-lease"

@@ -9,6 +9,15 @@
 > After consensus, the spec is written and planning begins immediately — no review gates
 > unless explicitly requested. Everything else is unchanged from upstream.
 
+## Keeping this fork current
+
+`main` is the fast-forward-only mirror of `obra/superpowers`'s `main` branch.
+The `steroids` branch layers this fork's custom workflow changes on top. To
+update both safely, use `scripts/sync-upstream` from a clean checkout. It
+fetches the parent repository, fast-forwards `main`, and rebases `steroids`;
+if Git finds a conflict, resolve it deliberately, run the relevant tests, and
+continue the rebase. See the script header for the initial remote setup.
+
 Superpowers is a complete software development methodology for your coding agents, built on top of a set of composable skills and some initial instructions that make sure your agent uses them.
 
 ## Table of Contents

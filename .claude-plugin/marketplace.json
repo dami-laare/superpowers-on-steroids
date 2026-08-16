@@ -2,19 +2,14 @@
   "name": "superpowers-on-steroids-dev",
   "description": "Local development marketplace for the superpowers-on-steroids fork",
   "owner": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "superpowers-on-steroids"
   },
   "plugins": [
     {
       "name": "superpowers-on-steroids",
       "description": "Fork of Superpowers with autonomous agent-team brainstorming (proxy agent answers instead of the user)",
       "version": "6.3.0",
-      "source": "./",
-      "author": {
-        "name": "Jesse Vincent",
-        "email": "jesse@fsck.com"
-      }
+      "source": "./"
     }
   ]
 }

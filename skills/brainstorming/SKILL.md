@@ -1,210 +1,130 @@
 ---
 name: brainstorming
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Runs an autonomous agent-team brainstorm: the main agent acts as the user's proxy and a Brainstormer subagent asks it the questions it would have asked the user."
 ---
 
-# Brainstorming Ideas Into Designs
+# Brainstorming Ideas Into Designs (Agent-Team Mode)
 
-Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+Turn ideas into fully formed designs through an **agent-to-agent dialogue**, not a user interrogation. The main agent becomes the **Proxy** — it answers design questions on the user's behalf using the persona in `skills/brainstorming/proxy-profile.md`. A **Brainstormer** subagent plays the role this skill used to play: it explores context, asks clarifying questions, proposes approaches, and converges on a design — except its questions go to the Proxy, and the two go back and forth until consensus.
 
-Start by classifying how much process the request needs, then work
-through your path: understand the context, refine the idea, present a
-design, and get your human partner's approval.
+The user is interrupted only when an Escalation Rule fires (executive decisions, explicitly reserved scenarios, licensing, open-source vs paid, and UI/UX design decisions — see proxy-profile.md). UI decisions always belong to the user, and when they're visual in nature they are shown via the visual companion rather than described in text.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any
-project, or take any implementation action until you have told your
-human partner what you intend and they have approved it. This applies
-to EVERY task on EVERY path below — the ceremony scales with the task;
-the approval gate never does.
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until the dialogue has reached DESIGN — CONSENSUS and the spec has been written. This applies to EVERY project regardless of perceived simplicity.
 </HARD-GATE>
 
-## Three Paths
+## Anti-Pattern: "This Is Too Simple To Need A Design"
 
-Before your first question, classify the request and say the
-classification out loud — "this looks bounded, so I'll present a short
-design here rather than write a spec" — so your human partner can
-override it:
+Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. For truly simple projects the dialogue may be one round and the design a few sentences — but it MUST happen.
 
-- **Spike** — a feasibility question ("can we...", "is it possible...",
-  "quick and dirty is fine") whose output is an answer, not code you
-  keep. Present the question and what you'll try in 2-3 sentences, get
-  a nod, then find out as cheaply as correctness allows. No design
-  doc, no spec file. Report findings as a recommendation; anything you
-  built stays labeled throwaway.
-- **Bounded** — a well-scoped change to code that already exists in
-  this repo: a new flag, a small endpoint, a one-file fix.
-  Understanding the kind of app is not enough — bounded means the flow
-  you are changing is already here to read. If there is no existing
-  flow to change, the task is not bounded. Ask the clarifying
-  questions that matter, present a short design IN CHAT (a few
-  sentences to a few short paragraphs), and STOP. Implementation
-  starts only after your human partner says yes to that design — a
-  bounded task's approval is as hard a gate as an architectural
-  one. No spec file, no implementation plan document.
-- **Architectural** — new projects, new subsystems, changes that
-  restructure how components fit together or alter interfaces others
-  depend on. Follow the full process: questions, approaches, sectioned
-  design, written spec, then the writing-plans skill.
+## Anti-Pattern: "I'll Just Answer My Own Questions Inline"
 
-When in doubt between two paths, take the heavier one. The ratchet is
-one-way: hidden complexity discovered mid-task upgrades the path —
-stop, say so, and step up. Nothing downgrades mid-task.
-
-## Anti-Pattern: "Too Simple To Need Approval"
-
-Every path ends with your human partner approving your intent before
-implementation. A todo list, a single-function utility, a config
-change — the design may be two sentences in chat, but you MUST present
-it and get approval. "Simple" tasks are where unexamined assumptions
-cause the most wasted work. What scales with simplicity is the
-artifact, never the approval.
-
-## Red Flags
-
-| Thought | Reality |
-|---------|---------|
-| "This is too simple to need a design" | Simple means a short design, not no design. Two sentences in chat, then approval. |
-| "I'll call it bounded and skip the spec" | Reaching for a label to skip work IS the doubt — take the heavier path. |
-| "It's bounded and the design is obvious — I'll start while they read it" | The gate is the approval, not the design's length. Present, then stop until you hear yes. |
-| "I understand this kind of app, so it's bounded" | Bounded measures the repo, not your familiarity. A new project has no existing flow — it is architectural. |
-| "The spike works, so I'll keep the code" | A spike's output is an answer. Keeping the code is a new request — classify it. |
-| "It grew, but I'm almost done — no need to re-classify" | Hidden complexity upgrades the path mid-task. Stop and say so. |
-| "They approved the spike, so the follow-up change is approved too" | Each task gets its own classification and its own approval. |
+The Proxy and the Brainstormer must be different agents. If the same context both asks and answers, you get confirmation of your first idea, not a brainstorm. Always dispatch a real subagent.
 
 ## Checklist
 
-Classify first, announce the path, then create a task for each item on
-your path and complete them in order.
+You MUST create a task for each of these items and complete them in order:
 
-**Spike:**
-1. **Explore project context** — enough to frame the probe
-2. **Present question + probe plan** — 2-3 sentences
-3. **Get approval** — a nod is enough
-4. **Investigate** — as cheaply as correctness allows
-5. **Report findings** — a recommendation; label anything built as throwaway
-
-**Bounded:**
-1. **Explore project context** — check files, docs, recent commits
-2. **Ask clarifying questions** — one at a time, the ones that matter
-3. **Present short design in chat** — approach, files touched, testing
-4. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
-5. **Implement** — proceed with the normal development workflow (TDD applies); no plan document
-
-**Architectural:**
-1. **Explore project context** — check files, docs, recent commits
-2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
-3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
-4. **Propose 2-3 approaches** — with trade-offs and your recommendation
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
+1. **Load the proxy profile** — read `skills/brainstorming/proxy-profile.md`; you are now the Proxy
+2. **Explore project context** — check files, docs, recent commits (share findings in the dispatch prompt, or tell the Brainstormer to explore itself)
+3. **Dispatch the Brainstormer** — fill in `skills/brainstorming/brainstormer-prompt.md` and spawn it via the Agent tool
+4. **Run the dialogue loop** — answer each QUESTIONS round as the Proxy via SendMessage; escalate to the user ONLY when an Escalation Rule fires
+5. **Audit the consensus design** — check it against the proxy profile's decision rules before accepting
 6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+7. **Spec self-review** — inline check for placeholders, contradictions, ambiguity, scope (see below)
+8. **Report and proceed** — post a brief summary to the user (no approval gate), then invoke the writing-plans skill immediately; the pipeline continues through planning straight into implementation without pausing
 
 ## Process Flow
 
 ```dot
 digraph brainstorming {
-    "Classify: spike / bounded / architectural" [shape=diamond];
-    "Present question + probe (2-3 sentences)" [shape=box];
-    "Ask clarifying questions (bounded)" [shape=box];
-    "Present short design in chat" [shape=box];
-    "Human approves?" [shape=diamond];
-    "Investigate; report recommendation" [shape=doublecircle];
-    "Implement via normal workflow (no plan doc)" [shape=doublecircle];
+    "Load proxy profile" [shape=box];
     "Explore project context" [shape=box];
-    "Ask clarifying questions" [shape=box];
-    "Propose 2-3 approaches" [shape=box];
-    "Present design sections" [shape=box];
-    "User approves design?" [shape=diamond];
-    "Write design doc" [shape=box];
-    "Spec self-review\n(fix inline)" [shape=box];
-    "User reviews spec?" [shape=diamond];
+    "Dispatch Brainstormer subagent" [shape=box];
+    "Brainstormer sends QUESTIONS round" [shape=box];
+    "Escalation rule fires?" [shape=diamond];
+    "Ask user (that question only)" [shape=box];
+    "Proxy answers via SendMessage" [shape=box];
+    "DESIGN — CONSENSUS reached?" [shape=diamond];
+    "Proxy audits design" [shape=box];
+    "Audit passes?" [shape=diamond];
+    "Write design doc + self-review" [shape=box];
+    "Report summary to user" [shape=box];
     "Invoke writing-plans skill" [shape=doublecircle];
-    "Hidden complexity? Upgrade path" [shape=box];
 
-    "Classify: spike / bounded / architectural" -> "Present question + probe (2-3 sentences)" [label="spike"];
-    "Classify: spike / bounded / architectural" -> "Ask clarifying questions (bounded)" [label="bounded"];
-    "Classify: spike / bounded / architectural" -> "Explore project context" [label="architectural"];
-    "Present question + probe (2-3 sentences)" -> "Human approves?";
-    "Ask clarifying questions (bounded)" -> "Present short design in chat";
-    "Present short design in chat" -> "Human approves?";
-    "Human approves?" -> "Investigate; report recommendation" [label="spike: yes"];
-    "Human approves?" -> "Implement via normal workflow (no plan doc)" [label="bounded: yes"];
-    "Hidden complexity? Upgrade path" -> "Classify: spike / bounded / architectural";
-    "Explore project context" -> "Ask clarifying questions";
-    "Ask clarifying questions" -> "Propose 2-3 approaches";
-    "Propose 2-3 approaches" -> "Present design sections";
-    "Present design sections" -> "User approves design?";
-    "User approves design?" -> "Present design sections" [label="no, revise"];
-    "User approves design?" -> "Write design doc" [label="yes"];
-    "Write design doc" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+    "Load proxy profile" -> "Explore project context";
+    "Explore project context" -> "Dispatch Brainstormer subagent";
+    "Dispatch Brainstormer subagent" -> "Brainstormer sends QUESTIONS round";
+    "Brainstormer sends QUESTIONS round" -> "Escalation rule fires?";
+    "Escalation rule fires?" -> "Ask user (that question only)" [label="yes"];
+    "Ask user (that question only)" -> "Proxy answers via SendMessage";
+    "Escalation rule fires?" -> "Proxy answers via SendMessage" [label="no"];
+    "Proxy answers via SendMessage" -> "DESIGN — CONSENSUS reached?";
+    "DESIGN — CONSENSUS reached?" -> "Brainstormer sends QUESTIONS round" [label="no, next round"];
+    "DESIGN — CONSENSUS reached?" -> "Proxy audits design" [label="yes"];
+    "Proxy audits design" -> "Audit passes?";
+    "Audit passes?" -> "Proxy answers via SendMessage" [label="no, push back"];
+    "Audit passes?" -> "Write design doc + self-review" [label="yes"];
+    "Write design doc + self-review" -> "Report summary to user";
+    "Report summary to user" -> "Invoke writing-plans skill";
 }
 ```
 
-**Terminal states are path-bound.** Architectural: the ONLY skill you
-invoke after brainstorming is writing-plans — never frontend-design,
-mcp-builder, or any other implementation skill. Bounded: after
-approval, implementation proceeds directly through the normal
-development workflow; no plan document. Spike: the terminal state is a
-reported recommendation.
+**The terminal state is invoking writing-plans.** Do NOT invoke frontend-design, mcp-builder, or any other implementation skill. The ONLY skill you invoke after brainstorming is writing-plans.
 
-## The Process
+**The pipeline does not pause after planning either.** writing-plans hands off directly into execution (subagent-driven-development, or executing-plans without subagent support). Brainstorm → spec → plan → implementation runs as one continuous flow; the only stops are Escalation Rules firing, genuine blockers, or the user having explicitly asked to review the spec or plan.
 
-The subsections below serve the bounded and architectural paths (a
-spike stops at "present the probe, get a nod"). Sections from
-**Exploring approaches** onward are architectural-path depth — for
-bounded work, context plus a few questions plus a short in-chat design
-is the whole process.
+## The Dialogue Protocol
 
-**Understanding the idea:**
+**Dispatching:**
 
-- Check out the current project state first (files, docs, recent commits)
-- Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
-- If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
-- For appropriately-scoped projects, ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
-- Only one question per message - if a topic needs more exploration, break it into multiple questions
-- Focus on understanding: purpose, constraints, success criteria
+- Fill in the template at `skills/brainstorming/brainstormer-prompt.md`: the idea verbatim, the context you gathered, and `MAX_ROUNDS` (default 8; 3 for trivially scoped work).
+- Spawn one Brainstormer with the Agent tool. Its final message each turn is its round; reply with SendMessage to the same agent so it keeps full dialogue context. Never spawn a fresh Brainstormer mid-dialogue — context loss resets the brainstorm.
 
-**Exploring approaches:**
+**Answering as the Proxy:**
 
-- Propose 2-3 different approaches with trade-offs
-- Present options conversationally with your recommendation and reasoning
-- Lead with your recommended option and explain why
-- YAGNI ruthlessly - remove unnecessary features from every approach and design
+- Answer every question with a decision AND its rationale, grounded in the proxy profile: least tech debt first, then product/UX impact, then quality/scalability, then cost.
+- Push back when the Brainstormer's recommendation violates the profile (adds debt, hurts UX, over-engineers). Concede when its argument is better. This friction is the point.
+- Keep a running **dialogue log** (question → decision → rationale) — you will need it for the spec's decisions section.
+- If you genuinely don't know a fact the question depends on (e.g., "does the API support X?"), go find out (read code, check docs) rather than guessing or bothering the user.
 
-**Presenting the design:**
+**Escalating to the user:**
 
-- Once you believe you understand what you're building, present the design
-- Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
-- Ask after each section whether it looks right so far
-- Cover: architecture, components, data flow, error handling, testing
-- Be ready to go back and clarify if something doesn't make sense
+- Before answering each question, check it against the Escalation Rules in proxy-profile.md. Licensing, open-source-vs-paid, and UI/UX design decisions are mechanical triggers; "executive decision" requires judgment — reserve it for genuinely high-profile calls you cannot safely make.
+- Surface only the escalated question, with minimal context and concrete options. Continue the rest of the dialogue if it can proceed without the answer.
+- **UI decisions get the visual treatment:** when the escalated question is about something the user would see (layouts, mockups, visual direction, navigation), follow the "UI escalations" section of proxy-profile.md — offer the visual companion and show the options rather than describing them. Conceptual product questions still go through the terminal.
 
-**Design for isolation and clarity:**
+**Optional specialist consultants:**
+
+- When a round exposes a genuine fork with deep trade-offs (e.g., two architectures with non-obvious scaling behavior), the Proxy MAY spawn 2–3 parallel specialist subagents (architecture, product/UX, operations) to argue the options, then decide using their input.
+- This is for hard forks only. Most questions the Proxy answers directly.
+
+**Consensus and audit:**
+
+- The dialogue ends when the Brainstormer outputs `DESIGN — CONSENSUS`.
+- Before accepting, audit the design against the proxy profile: modular boundaries? least-debt path chosen? product/UX considered? SOLID respected? anything gold-plated that YAGNI should cut? If the audit fails, send the objections back via SendMessage and continue.
+- If the Brainstormer outputs `DESIGN — BLOCKED`, resolve the open items yourself (research, escalate if an Escalation Rule applies) and send the resolutions back.
+
+## Design for Isolation and Clarity
 
 - Break the system into smaller units that each have one clear purpose, communicate through well-defined interfaces, and can be understood and tested independently
 - For each unit, you should be able to answer: what does it do, how do you use it, and what does it depend on?
 - Can someone understand what a unit does without reading its internals? Can you change the internals without breaking consumers? If not, the boundaries need work.
 - Smaller, well-bounded units are also easier for you to work with - you reason better about code you can hold in context at once, and your edits are more reliable when files are focused. When a file grows large, that's often a signal that it's doing too much.
 
-**Working in existing codebases:**
+## Working in Existing Codebases
 
 - Explore the current structure before proposing changes. Follow existing patterns.
 - Where existing code has problems that affect the work (e.g., a file that's grown too large, unclear boundaries, tangled responsibilities), include targeted improvements as part of the design - the way a good developer improves code they're working in.
 - Don't propose unrelated refactoring. Stay focused on what serves the current goal.
 
-## After the Design (architectural path)
+## After Consensus
 
 **Documentation:**
 
 - Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
+- Include the Decisions log and Rejected alternatives from the dialogue, plus any user-escalated decisions marked as such
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
 
@@ -218,33 +138,28 @@ After writing the spec document, look at it with fresh eyes:
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
-**User Review Gate:**
-After the spec review loop passes, ask the user to review the written spec before proceeding:
+**Report and proceed (NO user approval gate):**
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+Post a concise summary to the user — what was designed, the key decisions and why, anything that was escalated and how it resolved, and the spec path — then invoke the writing-plans skill immediately. Do NOT wait for approval.
 
-Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+**Exception:** if the user has explicitly asked to review the design or the spec (in this conversation or their instructions), stop after the report and wait for their review before invoking writing-plans. Their explicit request always wins.
 
-**Implementation:**
+## Key Principles
 
-- Invoke the writing-plans skill to create a detailed implementation plan
-- Do NOT invoke any other skill. writing-plans is the next step.
+- **Batch questions agent-to-agent** — up to 4 per round; no human is being overwhelmed
+- **Decide, don't defer** — the Proxy escalates only on Escalation Rules, never for comfort
+- **Rationale with every answer** — undocumented decisions can't be audited or defended
+- **YAGNI ruthlessly** — remove unnecessary features from all designs
+- **Explore alternatives** — the Brainstormer must propose 2-3 approaches before settling
+- **Friction is a feature** — Proxy and Brainstormer are supposed to disagree; consensus earned through pushback beats first-idea agreement
+- **User overrides everything** — if the user asks for interactive brainstorming or review gates, give them exactly that
 
-## Visual Companion
+## Visual Companion (for UI escalations)
 
-A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
+The browser-based visual companion (`skills/brainstorming/visual-companion.md`) is a tool for showing mockups and diagrams **to a human**. In agent-team mode the human enters the loop exactly when a UI/UX escalation fires — and that is when the companion earns its keep.
 
-**Offering the companion (just-in-time):** Do NOT offer it upfront. Wait until a question would genuinely be clearer shown than told — a real mockup / layout / diagram question, not merely a UI *topic*. The first time that happens, offer it then, as its own message:
-> "This next part might be easier if I show you — I can put together mockups, diagrams, and comparisons in a browser tab as we go. It's still new and can be token-intensive. Want me to? I'll open it for you."
-
-**This offer MUST be its own message.** Only the offer — no clarifying question, summary, or other content. Wait for the user's response. If they accept, start the server with `--open` so their browser opens to the first screen automatically. If they decline, continue text-only and don't offer again unless they raise it.
-
-**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
-
-- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, architecture diagrams, side-by-side visual designs
-- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
-
-A question about a UI topic is not automatically a visual question. "What does personality mean in this context?" is a conceptual question — use the terminal. "Which wizard layout works better?" is a visual question — use the browser.
-
-If they agree to the companion, read the detailed guide before proceeding:
-`skills/brainstorming/visual-companion.md`
+- **Offer it just-in-time**, not upfront: the first time an escalated UI question would genuinely be clearer shown than described, offer the companion as its own message. On approval, start the server with `--open` and present the options visually (side-by-side mockups, wireframes, navigation diagrams).
+- **Per-question test still applies:** a question about a UI *topic* is not automatically a visual question. "Which dashboard layout?" → browser. "Should admins see billing at all?" → terminal.
+- If the user declines the companion, continue escalating UI decisions through the terminal with AskUserQuestion and don't offer again unless they raise it.
+- Read `skills/brainstorming/visual-companion.md` before starting it.
+- Never start the companion for Proxy↔Brainstormer dialogue — it exists for the user, not for agents.

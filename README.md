@@ -1,4 +1,13 @@
-# Superpowers
+# Superpowers on Steroids
+
+> **Fork notice:** This is a local fork of [Superpowers](https://github.com/obra/superpowers) v6.0.3.
+> The `brainstorming` skill has been rewritten from an interactive user Q&A loop into an
+> **autonomous agent-team brainstorm**: the main agent acts as a proxy for the project owner
+> (persona in `skills/brainstorming/proxy-profile.md`) and a Brainstormer subagent asks *it*
+> the questions it would have asked the user. The user is only consulted for escalations
+> (executive decisions, explicitly reserved scenarios, licensing, open-source vs paid).
+> After consensus, the spec is written and planning begins immediately — no review gates
+> unless explicitly requested. Everything else is unchanged from upstream.
 
 Superpowers is a complete software development methodology for your coding agents, built on top of a set of composable skills and some initial instructions that make sure your agent uses them.
 
@@ -260,7 +269,7 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 ## The Basic Workflow
 
-1. **brainstorming** - Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document.
+1. **brainstorming** - Activates before writing code. Spawns a Brainstormer subagent that refines rough ideas through questions answered by the main agent acting as the user's proxy; explores alternatives, converges to consensus, escalates only executive/licensing/open-vs-paid decisions to the user. Saves design document and proceeds straight to planning.
 
 2. **using-git-worktrees** - Activates after design approval. Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
 
@@ -296,7 +305,7 @@ Superpowers is built by [Jesse Vincent](https://blog.fsck.com) and the rest of t
 - **verification-before-completion** - Ensure it's actually fixed
 
 **Collaboration** 
-- **brainstorming** - Socratic design refinement
+- **brainstorming** - Autonomous agent-team design refinement (proxy + Brainstormer)
 - **writing-plans** - Detailed implementation plans
 - **executing-plans** - Batch execution with checkpoints
 - **dispatching-parallel-agents** - Concurrent subagent workflows

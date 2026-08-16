@@ -13,7 +13,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
+**Context:** If working in an isolated worktree, it should have been created via the `superpowers-on-steroids:using-git-worktrees` skill at execution time.
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
@@ -58,7 +58,7 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers-on-steroids:subagent-driven-development (recommended) or superpowers-on-steroids:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -76,6 +76,19 @@ naming and copy rules, platform requirements — one line each, with exact
 values copied verbatim from the spec. Every task's requirements implicitly
 include this section.]
 
+## Execution Waves
+
+[Group tasks into waves for parallel execution. A task joins a wave only if
+(a) every task it depends on sits in an EARLIER wave, and (b) its file set
+(Create/Modify/Test) is fully disjoint from every other task in the same
+wave — including test files. Tasks in the same wave run concurrently.
+Max 4 tasks per wave; split larger groups. When in doubt about a pair,
+serialize it.]
+
+- Wave 1: Tasks 1, 2, 3 (no dependencies, disjoint files)
+- Wave 2: Tasks 4, 5 (4 depends on 1; 5 depends on 2, 3)
+- Wave 3: Task 6 (integration — depends on all)
+
 ---
 ```
 
@@ -88,6 +101,10 @@ include this section.]
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
+
+**Depends on:** [task numbers whose Produces this task Consumes, or "none".
+This drives the Execution Waves map — a task with no dependency edge and no
+file overlap runs in parallel with its wave-mates.]
 
 **Interfaces:**
 - Consumes: [what this task uses from earlier tasks — exact signatures]
@@ -148,24 +165,27 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
 
+**4. Wave safety:** For every wave in the Execution Waves map, check that no two same-wave tasks share a file (Create/Modify/Test) and that no task's Depends on / Consumes points at a same-wave or later-wave task. A wave that violates either rule will corrupt parallel execution — move the offending task to a later wave.
+
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-## Execution Handoff
+## Execution Handoff (No Pause)
 
-After saving the plan, offer execution choice:
+After saving the plan, proceed directly into execution. Do NOT stop to ask
+which execution approach to use, do NOT wait for approval, and do NOT
+summarize the plan and idle. Announce the handoff in one line:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
+**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Proceeding to execution."**
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+Then invoke the execution skill:
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
+- **Subagents available** (Claude Code, Codex, Copilot CLI, Gemini CLI):
+  **REQUIRED SUB-SKILL:** Use superpowers-on-steroids:subagent-driven-development —
+  fresh subagent per task, wave-based parallel execution, two-stage review
+- **No subagent support:**
+  **REQUIRED SUB-SKILL:** Use superpowers-on-steroids:executing-plans —
+  inline execution in this session
 
-**Which approach?"**
-
-**If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
-
-**If Inline Execution chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
-- Batch execution with checkpoints for review
+**Exception:** if the user has explicitly asked (in this conversation or
+their instructions) to review the plan before execution, stop after saving
+and wait for their review. Their explicit request always wins.

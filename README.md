@@ -11,10 +11,10 @@
 
 ## Keeping this fork current
 
-`main` is the fast-forward-only mirror of `obra/superpowers`'s `main` branch.
-The `steroids` branch layers this fork's custom workflow changes on top. To
+`upstream-main` is the fast-forward-only mirror of `obra/superpowers`'s `main`
+branch. `main` layers this fork's custom workflow changes on top. To
 update both safely, use `scripts/sync-upstream` from a clean checkout. It
-fetches the parent repository, fast-forwards `main`, and rebases `steroids`;
+fetches the parent repository, fast-forwards `upstream-main`, and rebases `main`;
 if Git finds a conflict, resolve it deliberately, run the relevant tests, and
 continue the rebase. See the script header for the initial remote setup.
 

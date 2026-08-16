@@ -12,8 +12,8 @@
 # behavior, run the relevant tests, then use `git rebase --continue`.
 set -euo pipefail
 
-mirror_branch="main"
-custom_branch="steroids"
+mirror_branch="upstream-main"
+custom_branch="main"
 
 git diff --quiet && git diff --cached --quiet || {
   echo "Working tree is not clean; commit or stash changes before syncing." >&2

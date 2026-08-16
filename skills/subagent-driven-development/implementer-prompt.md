@@ -46,6 +46,26 @@ Subagent (general-purpose):
 
     While iterating, run the focused test for what you're changing; run the
     full suite once before committing, not after every edit.
+    [PARALLEL WAVE ONLY: skip the full-suite run — wave-mates' in-progress
+    edits make it unreliable. Run only the tests covering your own files;
+    the controller runs the full suite once at wave end.]
+
+    ## Git Discipline
+
+    [PARALLEL WAVE ONLY — include this section when the task is part of a
+    parallel wave:]
+
+    Other implementers are working in this same checkout on DIFFERENT files.
+    - Touch ONLY the files your task brief lists (Create/Modify/Test). If
+      the right fix seems to require editing another file, stop and report
+      NEEDS_CONTEXT instead of editing it.
+    - Stage by explicit path: `git add <your files>`. NEVER use
+      `git add .`, `git add -A`, or `git commit -a` — you would commit a
+      wave-mate's half-finished work.
+    - If `git commit` fails because `index.lock` is held, wait 2 seconds
+      and retry.
+    - Don't run repo-wide formatters, linters with --fix, or codemods —
+      they would rewrite files outside your task.
 
     ## You Do Not Dispatch Subagents
 

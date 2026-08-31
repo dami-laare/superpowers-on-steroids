@@ -32,7 +32,7 @@ for token in DONE_WITH_CONCERNS NEEDS_CONTEXT BLOCKED DONE; do
 done
 
 # --- Implementer pair: repo-destroying commands both sides must forbid ---
-for token in "git reset" "git stash" "git clean" "git add ." "git add -A" "git commit -a"; do
+for token in "git reset" "git stash" "git clean" "git checkout --" "git add ." "git add -A" "git commit -a"; do
     assert_in_both "implementer git safety" "$token" "$impl_agent" "$impl_tmpl"
 done
 
@@ -44,6 +44,14 @@ final_tmpl="$REPO_ROOT/skills/requesting-code-review/code-reviewer.md"
 for token in Critical Important Minor; do
     assert_in_both "task reviewer severity" "$token" "$rev_agent" "$rev_tmpl"
     assert_in_both "final reviewer severity" "$token" "$final_agent" "$final_tmpl"
+done
+
+# --- Reviewer pairs: verdict strings the controller branches on ---
+for token in "Approved" "Needs fixes" "⚠️ Cannot verify from diff"; do
+    assert_in_both "task reviewer verdict" "$token" "$rev_agent" "$rev_tmpl"
+done
+for token in "Ready to merge?" "With fixes"; do
+    assert_in_both "final reviewer verdict" "$token" "$final_agent" "$final_tmpl"
 done
 
 # --- Agent file validity: what the plugin loader will accept ---

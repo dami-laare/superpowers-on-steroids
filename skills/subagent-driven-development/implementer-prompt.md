@@ -62,6 +62,9 @@ Subagent (general-purpose):
     - Stage by explicit path: `git add <your files>`. NEVER use
       `git add .`, `git add -A`, or `git commit -a` — you would commit a
       wave-mate's half-finished work.
+    - NEVER run `git reset`, `git stash`, `git checkout -- <path>`, or
+      `git clean`. These are repo-wide and would destroy a wave-mate's
+      uncommitted work, not just your own.
     - If `git commit` fails because `index.lock` is held, wait 2 seconds
       and retry.
     - Don't run repo-wide formatters, linters with --fix, or codemods —

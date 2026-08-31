@@ -177,6 +177,7 @@ write_upstream_fixture() {
         "$repo/.codex-plugin" \
         "$repo/.kimi-plugin" \
         "$repo/.private-journal" \
+        "$repo/agents" \
         "$repo/assets" \
         "$repo/evals/drill" \
         "$repo/hooks" \
@@ -243,6 +244,7 @@ EOF
 
     printf 'png fixture\n' > "$repo/assets/app-icon.png"
     printf 'eval harness fixture\n' > "$repo/evals/drill/README.md"
+    printf 'claude-code-only fixture\n' > "$repo/agents/caveman-implementer.md"
 
     cat > "$repo/hooks/hooks-codex.json" <<'EOF'
 {
@@ -296,6 +298,7 @@ EOF
         .gitignore \
         .gitmodules \
         .pre-commit-config.yaml \
+        agents/caveman-implementer.md \
         assets/app-icon.png \
         assets/superpowers-small.svg \
         evals/drill/README.md \
@@ -662,6 +665,7 @@ main() {
     assert_not_contains "$preview_section" ".private-journal/leak.txt" "Preview excludes ignored untracked file"
     assert_not_contains "$preview_section" "ignored-cache/" "Preview excludes pure ignored directories"
     assert_not_contains "$preview_section" "evals/" "Preview excludes eval harness"
+    assert_not_contains "$preview_section" "agents/" "Preview excludes top-level agents/ from sync destination"
     assert_not_contains "$preview_section" ".gitmodules" "Preview excludes repo submodule metadata"
     assert_not_contains "$preview_section" ".pre-commit-config.yaml" "Preview excludes repo pre-commit config"
     assert_not_contains "$preview_output" "Overlay file (.codex-plugin/plugin.json) will be regenerated" "Preview omits overlay regeneration note"

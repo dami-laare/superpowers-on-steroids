@@ -184,6 +184,14 @@ that implementer. Single-file mechanical fixes also take the cheapest tier.
 - Touches multiple files with integration concerns → standard model
 - Requires design judgment or broad codebase understanding → most capable model
 
+**Tier names resolve to concrete models.** If the session context carries a
+`<SUPERPOWERS_CONFIG>` block with a `tier models:` line, use its mapping —
+`cheap=`, `standard=`, and `capable=` name the model for each tier above. For
+tiers the block does not name, and when there is no block at all, judge what
+this harness offers. Config decides what each tier *is*; it never decides which
+tier a task *needs* — that stays with the heuristics above, including the
+mid-tier floor for reviewers.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:

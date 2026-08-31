@@ -12,6 +12,7 @@ Live in `tests/`. Currently:
 - `tests/brainstorm-server/` — node test suite for the brainstorm server JS code.
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
+- `tests/agents/` — bash contract test asserting the bundled `caveman-*` agents and their inline-template counterparts keep the same status tokens, git-safety rules, and severity buckets, plus agent-frontmatter validity.
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.
 - `tests/claude-code/test-helpers.sh`, `analyze-token-usage.py` — utilities used by remaining bash tests.
 - `tests/claude-code/test-subagent-driven-development.sh` — agent-can-describe-SDD test (no drill counterpart; tests description-recall, not behavior).

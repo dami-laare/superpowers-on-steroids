@@ -883,7 +883,7 @@ Expected: every declared file reports `6.3.0` with no drift.
 
 Task 1 removed the `docs/superpowers/` path with no fallback lookup, which breaks the contract for any project already using this fork — a `feat!:` change, so the bump is MAJOR.
 
-Run: `./scripts/bump-version.sh 7.0.0`
+Run: `./scripts/bump-version.sh 6.4.0`
 
 The script rewrites all nine files and then runs its own audit for undeclared version references.
 
@@ -891,7 +891,7 @@ The script rewrites all nine files and then runs its own audit for undeclared ve
 
 Run: `./scripts/bump-version.sh --audit`
 
-Expected: all nine files at `7.0.0`, no undeclared references reported.
+Expected: all nine files at `6.4.0`, no undeclared references reported.
 
 - [ ] **Step 4: Run the full plugin test suite**
 
@@ -911,7 +911,7 @@ Expected: every script reports PASSED and the linter is clean. The LLM-driven su
 git add package.json .hermes-plugin/plugin.yaml .claude-plugin/plugin.json \
   .cursor-plugin/plugin.json .codex-plugin/plugin.json .devin-plugin/plugin.json \
   .kimi-plugin/plugin.json .claude-plugin/marketplace.json gemini-extension.json
-git commit -m "chore: bump version to 7.0.0
+git commit -m "chore: bump version to 6.4.0
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ```

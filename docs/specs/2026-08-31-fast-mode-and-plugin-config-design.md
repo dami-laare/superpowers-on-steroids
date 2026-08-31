@@ -215,7 +215,9 @@ Clean break, no dual-path fallback: "look in both locations" is exactly the cond
 
 ### Version and commit type
 
-Per the repo's Conventional Commits rules, C changes where the plugin tells user projects to write plans and specs, **with no fallback**. For anyone mid-plan on this fork, that breaks the contract, which argues for `feat!:` → MAJOR (6.3.0 → 7.0.0) rather than `feat:` → MINOR.
+Per the repo's Conventional Commits rules, C changes where the plugin tells user projects to write plans and specs, **with no fallback**. For anyone mid-plan on this fork that breaks the contract, which on a standalone project would argue for `feat!:` → MAJOR.
+
+**Decision (owner, superseding the above): ship as `feat:` → MINOR, 6.3.0 → 6.4.0.** This fork tracks upstream `obra/superpowers`, whose latest tag is v6.3.0, and `scripts/sync-upstream` rebases the customization layer onto it. Jumping to 7.0.0 would leapfrog the repo we rebase onto and make the fork's version meaningless as a signal of which upstream it carries. The breaking migration is communicated in `RELEASE-NOTES.md` instead of through the version number.
 
 Flagged explicitly because commit type *is* the release decision here. Version lives in 9 files driven by `.version-bump.json`; use `scripts/bump-version.sh`.
 

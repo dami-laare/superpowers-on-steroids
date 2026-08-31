@@ -1,5 +1,70 @@
 # Superpowers Release Notes
 
+## v6.4.0 (2026-08-31)
+
+### Documentation paths — action required
+
+- **Plans and specs now live at `docs/plans/` and `docs/specs/`**, not
+  `docs/superpowers/plans/` and `docs/superpowers/specs/`. There is deliberately
+  no fallback lookup: a dual-path instruction is exactly the kind of conditional
+  prose that degrades skill compliance.
+- **Migrate by hand:** if a project of yours already has `docs/superpowers/plans/`
+  or `docs/superpowers/specs/`, move their contents up one level
+  (`git mv docs/superpowers/plans/* docs/plans/`) or the skills will not find them.
+- Shipping as MINOR rather than MAJOR: this fork tracks upstream's major version,
+  and upstream is still on v6.3.0. The change is nonetheless breaking for anyone
+  mid-plan — hence this notice.
+
+### Fast Mode
+
+- **Four bundled agents** ship at `agents/`: `caveman-implementer`,
+  `caveman-reviewer`, `caveman-final-reviewer`, and `caveman-investigator`.
+  They carry their role contracts in their own system prompts, so a dispatch
+  passes only task-specific material instead of a multi-kilobyte inline template.
+- **Opt in with `mode: fast`.** Subagent-driven development substitutes the
+  bundled agents for the implementer, task-reviewer, and final-review roles;
+  requesting-code-review and brainstorming each honour it at their own entry
+  point. Roles with no bundled counterpart stay on the template path in both
+  modes, so nothing is left ambiguous.
+- **Additive by design.** The inline templates remain the default, so the
+  non-Claude-Code harness ports are unaffected.
+
+### Configuration
+
+- **Per-plugin settings via `userConfig`.** Configure with `/plugin configure`;
+  values are stored in `pluginConfigs` in your user `settings.json` (user scope
+  only — project-level entries are ignored by the platform).
+- **`mode`** — `standard` (default) or `fast`.
+- **`model_cheap` / `model_standard` / `model_capable`** — map the tiers the
+  Model Selection heuristics already speak in to concrete models. Configuration
+  decides what a tier *is*; the tuned heuristics still decide which tier a task
+  *needs*, including the mid-tier floor for reviewers.
+- **Effort is not configurable, and deliberately exposes no knob.** Agent
+  frontmatter is parsed before variable substitution and the dispatch call has no
+  effort parameter, so effort can only be chosen by choosing an agent — which is
+  what `mode` does.
+- With nothing configured, the injected session context is byte-identical to
+  v6.3.0.
+
+### Subagent-Driven Development
+
+- **Implementers are now told not to run repo-wide destructive git commands** —
+  `git reset`, `git stash`, `git checkout -- <path>`, `git clean` — on every
+  dispatch, not only in parallel waves. Previously the prohibition covered just
+  the staging commands, and only when a wave was parallel; a serial implementer
+  running `git clean -fdx` would have destroyed the progress ledger.
+- **`## Prompt Templates`** now points at the fast-mode substitution table, so the
+  list a controller actually consults at dispatch time reflects the mode.
+
+### Internal
+
+- Contract tests assert that the bundled agents and their inline templates keep
+  the same status tokens, forbidden-git-command list, severity buckets, and
+  verdict strings — and that the trigger string the hook emits is the one the
+  skills look for, so fast mode cannot silently go inert.
+- A top-level `agents/` directory is excluded from the embedded Codex plugin via
+  both the rsync excludes and the archive guard.
+
 ## v6.3.0 (2026-08-12)
 
 ### Harness Support

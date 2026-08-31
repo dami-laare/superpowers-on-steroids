@@ -33,6 +33,10 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)
 
+If the session context carries `<SUPERPOWERS_CONFIG>` with `mode: fast`, dispatch
+`superpowers-on-steroids:caveman-final-reviewer` instead — it carries the reviewer
+contract already, so pass it only the four placeholder values below.
+
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
 - `{PLAN_OR_REQUIREMENTS}` - What it should do

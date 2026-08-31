@@ -192,6 +192,31 @@ this harness offers. Config decides what each tier *is*; it never decides which
 tier a task *needs* — that stays with the heuristics above, including the
 mid-tier floor for reviewers.
 
+## Fast Mode
+
+If the session context carries a `<SUPERPOWERS_CONFIG>` block with `mode: fast`,
+dispatch the bundled agents instead of pasting the inline templates:
+
+| Role | Standard path | Fast path |
+|---|---|---|
+| Implementer | [implementer-prompt.md](implementer-prompt.md) | `superpowers-on-steroids:caveman-implementer` |
+| Task reviewer | [task-reviewer-prompt.md](task-reviewer-prompt.md) | `superpowers-on-steroids:caveman-reviewer` |
+| Final whole-branch review | [code-reviewer.md](../requesting-code-review/code-reviewer.md) | `superpowers-on-steroids:caveman-final-reviewer` |
+
+Each agent carries its role contract in its own system prompt, so a fast
+dispatch passes only the task-specific material: the brief path, the report
+path, the review package path, interfaces from earlier tasks, and the global
+constraints that bind the task. Do not paste the template body as well — that
+duplicates the contract and throws away the context saving that is the point.
+
+Roles with no agent counterpart stay on the template path in both modes: the
+re-review, fix subagents, the spec-document reviewer, the plan-document
+reviewer, and the Brainstormer.
+
+Model selection is unchanged in fast mode — resolve the tier as always and pass
+`model:` explicitly. Effort is fixed by each agent's definition and cannot be
+raised at dispatch.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:
@@ -204,7 +229,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **BLOCKED:** The implementer cannot complete the task. Assess the blocker:
 1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model
+2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, re-dispatch on the inline template path rather than the fast agent — its effort is pinned low and cannot be raised at dispatch.
 3. If the task is too large, break it into smaller pieces
 4. If the plan itself is wrong, escalate to the human
 

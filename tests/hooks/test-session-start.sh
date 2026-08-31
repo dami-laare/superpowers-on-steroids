@@ -217,6 +217,97 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash "$HOOK_UNDER_TEST"
 
+# --- Per-plugin config (userConfig -> CLAUDE_PLUGIN_OPTION_* -> context) ---
+
+# Default configuration must not perturb the injected context at all: the
+# eval baseline depends on this output staying byte-identical.
+baseline_home="$(make_home config-baseline)"
+unconfigured="$(env -i PATH="${PATH:-}" HOME="$baseline_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK_UNDER_TEST")"
+default_configured="$(env -i PATH="${PATH:-}" HOME="$baseline_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_OPTION_MODE=standard \
+    bash "$HOOK_UNDER_TEST")"
+if [[ "$unconfigured" == "$default_configured" ]]; then
+    pass "mode=standard emits byte-identical output to no config"
+else
+    fail "mode=standard emits byte-identical output to no config"
+fi
+
+if printf '%s' "$unconfigured" | grep -q "SUPERPOWERS_CONFIG"; then
+    fail "unconfigured hook omits the config block"
+else
+    pass "unconfigured hook omits the config block"
+fi
+
+fast_home="$(make_home config-fast)"
+assert_command_output \
+    "mode=fast emits the config block" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast" \
+    "" \
+    "$fast_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    bash "$HOOK_UNDER_TEST"
+
+tiers_home="$(make_home config-tiers)"
+assert_command_output \
+    "tier models line lists only the tiers that are set, in fixed order" \
+    "nested" \
+    "tier models: cheap=haiku capable=opus" \
+    "" \
+    "$tiers_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODEL_CHEAP=haiku \
+    CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE=opus \
+    bash "$HOOK_UNDER_TEST"
+
+bogus_home="$(make_home config-bogus-mode)"
+assert_command_output \
+    "unrecognised mode falls back to standard (no block)" \
+    "nested" \
+    "" \
+    "SUPERPOWERS_CONFIG" \
+    "$bogus_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=turbo \
+    bash "$HOOK_UNDER_TEST"
+
+inject_home="$(make_home config-injection)"
+assert_command_output \
+    "values failing the whitelist are dropped and JSON stays valid" \
+    "nested" \
+    "" \
+    "SUPERPOWERS_CONFIG"$'\037'"\$(id)" \
+    "$inject_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODEL_CHEAP='he" + $(id) + "llo' \
+    bash "$HOOK_UNDER_TEST"
+
+copilot_config_home="$(make_home config-copilot)"
+assert_command_output \
+    "config block also reaches the Copilot CLI output shape" \
+    "sdk" \
+    "mode: fast" \
+    "" \
+    "$copilot_config_home" \
+    COPILOT_CLI=1 \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    bash "$HOOK_UNDER_TEST"
+
+cursor_config_home="$(make_home config-cursor)"
+assert_command_output \
+    "config block also reaches the Cursor output shape" \
+    "cursor" \
+    "mode: fast" \
+    "" \
+    "$cursor_config_home" \
+    CURSOR_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    bash "$HOOK_UNDER_TEST"
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

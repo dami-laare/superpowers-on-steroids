@@ -33,6 +33,12 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)
 
+If the session context carries `<SUPERPOWERS_CONFIG>` with `mode: fast`, first run
+`scripts/review-package BASE_SHA HEAD_SHA` (from subagent-driven-development's
+directory) and note the printed path — the agent expects to read a review
+package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer` instead,
+passing it the printed package path plus the four placeholder values below.
+
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
 - `{PLAN_OR_REQUIREMENTS}` - What it should do
@@ -57,7 +63,7 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 [Dispatch code reviewer subagent]
   DESCRIPTION: Added verifyIndex() and repairIndex() with 4 issue types
-  PLAN_OR_REQUIREMENTS: Task 2 from docs/superpowers/plans/deployment-plan.md
+  PLAN_OR_REQUIREMENTS: Task 2 from docs/plans/deployment-plan.md
   BASE_SHA: a7981ec
   HEAD_SHA: 3df7661
 

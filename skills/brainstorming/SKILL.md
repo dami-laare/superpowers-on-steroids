@@ -26,11 +26,11 @@ The Proxy and the Brainstormer must be different agents. If the same context bot
 You MUST create a task for each of these items and complete them in order:
 
 1. **Load the proxy profile** — read `skills/brainstorming/proxy-profile.md`; you are now the Proxy
-2. **Explore project context** — check files, docs, recent commits (share findings in the dispatch prompt, or tell the Brainstormer to explore itself)
+2. **Explore project context** — check files, docs, recent commits (share findings in the dispatch prompt, or tell the Brainstormer to explore itself). In fast mode (`<SUPERPOWERS_CONFIG>` with `mode: fast`), dispatch `superpowers-on-steroids:caveman-investigator` to gather this instead of exploring inline.
 3. **Dispatch the Brainstormer** — fill in `skills/brainstorming/brainstormer-prompt.md` and spawn it via the Agent tool
 4. **Run the dialogue loop** — answer each QUESTIONS round as the Proxy via SendMessage; escalate to the user ONLY when an Escalation Rule fires
 5. **Audit the consensus design** — check it against the proxy profile's decision rules before accepting
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
+6. **Write design doc** — save to `docs/specs/YYYY-MM-DD-<topic>-design.md` and commit
 7. **Spec self-review** — inline check for placeholders, contradictions, ambiguity, scope (see below)
 8. **Report and proceed** — post a brief summary to the user (no approval gate), then invoke the writing-plans skill immediately; the pipeline continues through planning straight into implementation without pausing
 
@@ -122,7 +122,7 @@ digraph brainstorming {
 
 **Documentation:**
 
-- Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+- Write the validated design (spec) to `docs/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
 - Include the Decisions log and Rejected alternatives from the dialogue, plus any user-escalated decisions marked as such
 - Use elements-of-style:writing-clearly-and-concisely skill if available

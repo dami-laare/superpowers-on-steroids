@@ -52,6 +52,10 @@ Subagent (general-purpose):
 
     ## Git Discipline
 
+    NEVER run `git reset`, `git stash`, `git checkout -- <path>`, or
+    `git clean`. These are repo-wide: they discard work outside your task,
+    including other agents' commits and the controller's progress ledger.
+
     [PARALLEL WAVE ONLY — include this section when the task is part of a
     parallel wave:]
 

@@ -53,10 +53,10 @@ cat > package.json <<'EOF'
 }
 EOF
 
-mkdir -p src test docs/superpowers/plans
+mkdir -p src test docs/plans
 
 # Create a simple implementation plan
-cat > docs/superpowers/plans/implementation-plan.md <<'EOF'
+cat > docs/plans/implementation-plan.md <<'EOF'
 # Test Implementation Plan
 
 This is a minimal plan to test the subagent-driven-development workflow.
@@ -132,7 +132,7 @@ OUTPUT_FILE="$TEST_PROJECT/claude-output.txt"
 
 # Create prompt file
 cat > "$TEST_PROJECT/prompt.txt" <<'EOF'
-I want you to execute the implementation plan at docs/superpowers/plans/implementation-plan.md using the subagent-driven-development skill.
+I want you to execute the implementation plan at docs/plans/implementation-plan.md using the subagent-driven-development skill.
 
 IMPORTANT: Follow the skill exactly. I will be verifying that you:
 1. Read the plan once at the beginning
@@ -146,7 +146,7 @@ EOF
 
 # Note: We use a longer timeout since this is integration testing
 # Use --allowed-tools to enable tool usage in headless mode
-PROMPT="Execute the implementation plan at docs/superpowers/plans/implementation-plan.md using the subagent-driven-development skill.
+PROMPT="Execute the implementation plan at docs/plans/implementation-plan.md using the subagent-driven-development skill.
 
 IMPORTANT: Follow the skill exactly. I will be verifying that you:
 1. Read the plan once at the beginning

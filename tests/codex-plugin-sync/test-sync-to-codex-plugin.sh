@@ -725,6 +725,22 @@ Locally modified fixture content." "Dirty local apply preserves tracked working-
     assert_not_contains "$script_source" "Brand Assets directory" "Source drops Brand Assets directory phrasing"
     assert_not_contains "$script_source" "--assets-src" "Source drops --assets-src"
 
+    echo ""
+    echo "Top-level agents/ guard assertions..."
+    # A top-level agents/ directory is Claude-Code-only and must never reach the
+    # embedded Codex plugin, via either the rsync excludes or the archive guard.
+    if grep -q '"/agents/"' "$REPO_ROOT/scripts/sync-to-codex-plugin.sh"; then
+        pass "sync excludes top-level agents/ (anchored)"
+    else
+        fail "sync excludes top-level agents/ (anchored)"
+    fi
+
+    if grep -q '\^agents/' "$REPO_ROOT/scripts/package-codex-plugin.sh"; then
+        pass "package archive guard rejects top-level agents/"
+    else
+        fail "package archive guard rejects top-level agents/"
+    fi
+
     if [[ $FAILURES -ne 0 ]]; then
         echo ""
         echo "FAILED: $FAILURES assertion(s) failed."

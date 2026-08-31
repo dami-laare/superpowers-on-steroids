@@ -91,6 +91,43 @@ for f in "$AGENTS_DIR"/caveman-*.md; do
     fi
 done
 
+# --- Wiring: the hook's emitted trigger must match what the skills look for ---
+# This is the failure mode that would make fast mode silently inert: the hook
+# keeps emitting a block nobody reads, or the skills watch for a string nobody
+# emits. Both sides stay green under prose-only tests, so assert the real
+# emitted output against the real skill text.
+
+wiring_home="$(mktemp -d)"
+emitted="$(env -i PATH="${PATH:-}" HOME="$wiring_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_OPTION_MODE=fast \
+    bash "$REPO_ROOT/hooks/session-start" 2>/dev/null)" || emitted=""
+rm -rf "$wiring_home"
+
+if [ -z "$emitted" ]; then
+    fail "wiring: hook produced no output to check"
+else
+    for token in "<SUPERPOWERS_CONFIG>" "mode: fast" "</SUPERPOWERS_CONFIG>"; do
+        if printf '%s' "$emitted" | grep -qF -- "$token"; then
+            pass "wiring: hook emits '$token'"
+        else
+            fail "wiring: hook does not emit '$token'"
+        fi
+    done
+
+    for skill in subagent-driven-development requesting-code-review brainstorming; do
+        skill_file="$REPO_ROOT/skills/$skill/SKILL.md"
+        for token in "<SUPERPOWERS_CONFIG>" "mode: fast"; do
+            if ! grep -qF -- "$token" "$skill_file"; then
+                fail "wiring: $skill does not look for '$token'"
+            elif printf '%s' "$emitted" | grep -qF -- "$token"; then
+                pass "wiring: $skill trigger '$token' is actually emitted"
+            else
+                fail "wiring: $skill looks for '$token' but the hook never emits it"
+            fi
+        done
+    done
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

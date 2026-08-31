@@ -359,6 +359,8 @@ a ledger file, not only in todos.
 - [task-reviewer-prompt.md](task-reviewer-prompt.md) - Dispatch task reviewer subagent (spec compliance + code quality)
 - Final whole-branch review: use superpowers-on-steroids:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md)
 
+In fast mode, substitute the bundled agents per the Fast Mode table above.
+
 ## Example Workflow
 
 ```

@@ -33,9 +33,11 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)
 
-If the session context carries `<SUPERPOWERS_CONFIG>` with `mode: fast`, dispatch
-`superpowers-on-steroids:caveman-final-reviewer` instead — it carries the reviewer
-contract already, so pass it only the four placeholder values below.
+If the session context carries `<SUPERPOWERS_CONFIG>` with `mode: fast`, first run
+`scripts/review-package BASE_SHA HEAD_SHA` (from subagent-driven-development's
+directory) and note the printed path — the agent expects to read a review
+package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer` instead,
+passing it the printed package path plus the four placeholder values below.
 
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built

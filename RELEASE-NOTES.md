@@ -31,11 +31,21 @@
 
 ### Configuration
 
-- **Per-plugin settings via `userConfig`.** Configure with `/plugin configure`;
-  values are stored in `pluginConfigs` in your user `settings.json` (user scope
-  only — project-level entries are ignored by the platform).
-- **`mode`** — `standard` (default) or `fast`.
-- **`model_cheap` / `model_standard` / `model_capable`** — map the tiers the
+- **Configure via the `env` block of `settings.json`** — either
+  `~/.claude/settings.json` for every project, or a project's own
+  `.claude/settings.json` to scope it to one repo:
+
+  ```json
+  { "env": { "SUPERPOWERS_MODE": "fast", "SUPERPOWERS_MODEL_CHEAP": "haiku" } }
+  ```
+
+  Deliberately *not* `plugin.json` `userConfig`: that interrogates you at enable
+  time, and an empty value there reads as "not yet set" permanently, so optional
+  knobs nag forever. Environment variables also resolve through project settings,
+  which `pluginConfigs` does not — so fast mode can be turned on for one gnarly
+  repo without changing anything globally.
+- **`SUPERPOWERS_MODE`** — `standard` (default) or `fast`.
+- **`SUPERPOWERS_MODEL_CHEAP` / `_STANDARD` / `_CAPABLE`** — map the tiers the
   Model Selection heuristics already speak in to concrete models. Configuration
   decides what a tier *is*; the tuned heuristics still decide which tier a task
   *needs*, including the mid-tier floor for reviewers.

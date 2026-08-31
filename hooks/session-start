@@ -25,8 +25,10 @@ escape_for_json() {
 
 using_superpowers_escaped=$(escape_for_json "$using_superpowers_content")
 
-# Per-plugin config. Claude Code exports userConfig options as
-# CLAUDE_PLUGIN_OPTION_<KEY> (key uppercased, non-alphanumerics -> _).
+# Per-plugin config, read from environment variables. Set these in the "env"
+# block of ~/.claude/settings.json or a project's .claude/settings.json.
+# Deliberately NOT plugin.json userConfig: that prompts at enable time, and an
+# empty value there reads as "not yet set" forever, so optional knobs nag.
 # Whitelist rather than escape: a value that cannot match this pattern
 # cannot corrupt the JSON string assembled below.
 config_value() {
@@ -38,7 +40,7 @@ config_value() {
     esac
 }
 
-sp_mode="$(config_value "${CLAUDE_PLUGIN_OPTION_MODE:-}")"
+sp_mode="$(config_value "${SUPERPOWERS_MODE:-}")"
 # standard is the absence of fast, so it says nothing and emits nothing.
 if [ "$sp_mode" != "fast" ]; then
     sp_mode=""
@@ -47,9 +49,9 @@ fi
 sp_tiers=""
 for tier_name in cheap standard capable; do
     case "$tier_name" in
-        cheap)    tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CHEAP:-}" ;;
-        standard) tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_STANDARD:-}" ;;
-        capable)  tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE:-}" ;;
+        cheap)    tier_raw="${SUPERPOWERS_MODEL_CHEAP:-}" ;;
+        standard) tier_raw="${SUPERPOWERS_MODEL_STANDARD:-}" ;;
+        capable)  tier_raw="${SUPERPOWERS_MODEL_CAPABLE:-}" ;;
         *)        tier_raw="" ;;
     esac
     tier_model="$(config_value "$tier_raw")"

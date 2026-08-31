@@ -99,7 +99,7 @@ done
 
 wiring_home="$(mktemp -d)"
 emitted="$(env -i PATH="${PATH:-}" HOME="$wiring_home" \
-    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_OPTION_MODE=fast \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" SUPERPOWERS_MODE=fast \
     bash "$REPO_ROOT/hooks/session-start" 2>/dev/null)" || emitted=""
 rm -rf "$wiring_home"
 

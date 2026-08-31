@@ -180,7 +180,21 @@ Lines for unset tiers are omitted. **When nothing is configured, no block is emi
 
 Whitelist rather than escape. `escape_for_json` would technically handle quoting, but a positive-match filter makes corruption *impossible* rather than *handled*, and excludes nothing legitimate. The hook's three-way platform branch (Cursor / Claude Code / Copilot) is untouched.
 
-### Scope limitation, accepted
+### Transport revision (post-implementation)
+
+**Superseded: `userConfig` in `plugin.json`. Shipped: `SUPERPOWERS_*` env vars read from the `env` block of `settings.json`.**
+
+Declaring `userConfig` makes Claude Code prompt for every option at plugin-enable time — reported from a real install on a second machine. Worse, the "not yet set" check treats an empty value as unset:
+
+```js
+if (v === void 0 || v === "" || …) u[d] = y;   // counts as NOT SET
+```
+
+The three tier options defaulted to `""`, so they would have been reported unset permanently and nagged forever, however many times they were configured. Interrogating a user about model tiers to install a plugin whose knobs are all optional is the wrong trade.
+
+The env transport fixes that and reverses the scope limitation below as a bonus: `pluginConfigs` is user/managed-scope only, but `env` resolves through project `.claude/settings.json`, so fast mode can be enabled per-repository after all. The hook already read shell variables, so only the variable names changed — the seam held, exactly as the limitation note predicted it would.
+
+### Scope limitation, accepted (superseded by the revision above)
 
 `userConfig` resolves at **user/managed scope only** — project and `.local` entries are ignored by design. Fast mode is therefore machine-wide, not per-repository.
 

@@ -13,5 +13,31 @@
     "best-practices",
     "workflows",
     "agent-teams"
-  ]
+  ],
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "Execution mode",
+      "description": "standard = inline prompt templates (default). fast = dispatch the bundled caveman-* agents: terser reports, lower reasoning effort, smaller dispatch payloads.",
+      "default": "standard"
+    },
+    "model_cheap": {
+      "type": "string",
+      "title": "Cheap tier model",
+      "description": "Model for mechanical, fully-specified work — single-file transcription tasks. Leave empty to let the agent judge what this harness offers.",
+      "default": ""
+    },
+    "model_standard": {
+      "type": "string",
+      "title": "Standard tier model",
+      "description": "Model for integration and judgment work, and the floor for reviewers. Leave empty to let the agent judge.",
+      "default": ""
+    },
+    "model_capable": {
+      "type": "string",
+      "title": "Capable tier model",
+      "description": "Model for architecture, design, and the final whole-branch review. Leave empty to let the agent judge.",
+      "default": ""
+    }
+  }
 }

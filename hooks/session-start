@@ -24,7 +24,53 @@ escape_for_json() {
 }
 
 using_superpowers_escaped=$(escape_for_json "$using_superpowers_content")
-session_context="<EXTREMELY_IMPORTANT>\nYou have superpowers.\n\n**Below is the full content of your 'superpowers-on-steroids:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool with the 'superpowers-on-steroids:' prefix:**\n\n${using_superpowers_escaped}\n</EXTREMELY_IMPORTANT>"
+
+# Per-plugin config. Claude Code exports userConfig options as
+# CLAUDE_PLUGIN_OPTION_<KEY> (key uppercased, non-alphanumerics -> _).
+# Whitelist rather than escape: a value that cannot match this pattern
+# cannot corrupt the JSON string assembled below.
+config_value() {
+    local raw="${1:-}"
+    case "$raw" in
+        "") return 0 ;;
+        *[!A-Za-z0-9._-]*) return 0 ;;
+        *) printf '%s' "$raw" ;;
+    esac
+}
+
+sp_mode="$(config_value "${CLAUDE_PLUGIN_OPTION_MODE:-}")"
+# standard is the absence of fast, so it says nothing and emits nothing.
+if [ "$sp_mode" != "fast" ]; then
+    sp_mode=""
+fi
+
+sp_tiers=""
+for tier_name in cheap standard capable; do
+    case "$tier_name" in
+        cheap)    tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CHEAP:-}" ;;
+        standard) tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_STANDARD:-}" ;;
+        capable)  tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE:-}" ;;
+        *)        tier_raw="" ;;
+    esac
+    tier_model="$(config_value "$tier_raw")"
+    if [ -n "$tier_model" ]; then
+        sp_tiers="${sp_tiers} ${tier_name}=${tier_model}"
+    fi
+done
+
+config_block=""
+if [ -n "$sp_mode" ] || [ -n "$sp_tiers" ]; then
+    config_block="\n\n<SUPERPOWERS_CONFIG>"
+    if [ -n "$sp_mode" ]; then
+        config_block="${config_block}\nmode: ${sp_mode}"
+    fi
+    if [ -n "$sp_tiers" ]; then
+        config_block="${config_block}\ntier models:${sp_tiers}"
+    fi
+    config_block="${config_block}\n</SUPERPOWERS_CONFIG>"
+fi
+
+session_context="<EXTREMELY_IMPORTANT>\nYou have superpowers.\n\n**Below is the full content of your 'superpowers-on-steroids:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool with the 'superpowers-on-steroids:' prefix:**\n\n${using_superpowers_escaped}\n</EXTREMELY_IMPORTANT>${config_block}"
 
 # Output context injection as JSON.
 # Cursor hooks expect additional_context (snake_case).

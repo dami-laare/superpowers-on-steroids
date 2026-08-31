@@ -324,12 +324,13 @@ if [ "$sp_mode" != "fast" ]; then
 fi
 
 sp_tiers=""
-for tier in cheap:CLAUDE_PLUGIN_OPTION_MODEL_CHEAP \
-            standard:CLAUDE_PLUGIN_OPTION_MODEL_STANDARD \
-            capable:CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE; do
-    tier_name="${tier%%:*}"
-    tier_var="${tier#*:}"
-    eval "tier_raw=\${${tier_var}:-}"
+for tier_name in cheap standard capable; do
+    case "$tier_name" in
+        cheap)    tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CHEAP:-}" ;;
+        standard) tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_STANDARD:-}" ;;
+        capable)  tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE:-}" ;;
+        *)        tier_raw="" ;;
+    esac
     tier_model="$(config_value "$tier_raw")"
     if [ -n "$tier_model" ]; then
         sp_tiers="${sp_tiers} ${tier_name}=${tier_model}"
@@ -377,7 +378,7 @@ Expected: `OK: byte-identical to pre-change baseline`. If diff reports a differe
 
 Run: `./scripts/lint-shell.sh`
 
-Expected: clean. `eval` on line `eval "tier_raw=..."` may draw a shellcheck warning; if so, add a scoped `# shellcheck disable=SC2086` or restructure with a `case` — do not silence the whole file.
+Expected: clean. If shellcheck reports anything, fix it in the new code — never silence a rule file-wide.
 
 - [ ] **Step 9: Commit**
 

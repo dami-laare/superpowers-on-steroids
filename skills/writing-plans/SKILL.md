@@ -15,7 +15,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `superpowers-on-steroids:using-git-worktrees` skill at execution time.
 
-**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+**Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
 
 ## Scope Check
@@ -175,7 +175,7 @@ After saving the plan, proceed directly into execution. Do NOT stop to ask
 which execution approach to use, do NOT wait for approval, and do NOT
 summarize the plan and idle. Announce the handoff in one line:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Proceeding to execution."**
+**"Plan complete and saved to `docs/plans/<filename>.md`. Proceeding to execution."**
 
 Then invoke the execution skill:
 

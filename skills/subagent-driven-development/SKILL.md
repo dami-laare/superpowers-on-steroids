@@ -331,7 +331,7 @@ a ledger file, not only in todos.
 ```
 You: I'm using Subagent-Driven Development to execute this plan.
 
-[Read plan file once: docs/superpowers/plans/feature-plan.md]
+[Read plan file once: docs/plans/feature-plan.md]
 [Note Execution Waves: Wave 1 = Tasks 1, 2 (independent, disjoint files);
  Wave 2 = Task 3 (depends on both)]
 [Create todos for all tasks]

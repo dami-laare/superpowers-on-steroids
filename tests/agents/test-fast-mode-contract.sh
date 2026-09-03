@@ -97,6 +97,13 @@ else
     fail "fast mode table: re-review row missing or not mapped to caveman-reviewer"
 fi
 
+# --- Review tiering: plan writes the field, SDD reads it in fast mode ---
+plans_skill="$REPO_ROOT/skills/writing-plans/SKILL.md"
+assert_in_file "review tier" "**Review tier:**" "$plans_skill"
+assert_in_file "review tier" "Review tier gate" "$sdd_skill"
+assert_in_file "review tier" "transcription" "$sdd_skill"
+assert_in_file "review tier" "fix loop capped at 3 rounds" "$sdd_skill"
+
 # --- Agent file validity: what the plugin loader will accept ---
 for f in "$AGENTS_DIR"/caveman-*.md; do
     base="$(basename "$f" .md)"

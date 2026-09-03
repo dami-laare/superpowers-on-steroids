@@ -196,6 +196,13 @@ before execution begins, not one interrupt per discovery mid-plan. If the
 scan is clean, proceed without comment. The review loop remains the net for
 conflicts that only emerge from implementation.
 
+If the session context carries a `<SUPERPOWERS_CONFIG>` block, state the
+resolved policy once, before wave 1, in one line: `Mode: fast — transcription
+tasks skip per-task review on green report evidence, judgment tasks reviewed;
+fix loop capped at 3 rounds`, or `Mode: standard — every task reviewed; fix
+loop capped at 3 rounds` when the block carries only tier models. With no
+block, say nothing.
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
@@ -266,11 +273,31 @@ Model selection is unchanged in fast mode — resolve the tier as always and pas
 `model:` explicitly. Effort is fixed by each agent's definition and cannot be
 raised at dispatch.
 
+**Review tier gate.** Each plan task carries `**Review tier:** transcription |
+judgment` (writing-plans). In fast mode, a `transcription` task skips
+`review-package` and the task reviewer when the implementer's report **file**
+(not the short reply) shows status DONE, the GREEN test command, and its
+passing output — read the file to check. Ledger it as
+`Task N: complete (wave W, commits <base7>..<head7>, transcription gate)`.
+Promote the task to judgment — generate the package and dispatch the
+reviewer as normal — on any of:
+
+1. status ≠ DONE;
+2. the report file lacks the GREEN command or its output;
+3. the task's commits touch a file outside the brief's Files list
+   (`git diff --stat WAVE_BASE HEAD -- <task's files>` vs `git diff --stat WAVE_BASE HEAD`);
+4. the implementer reports a plumbing deviation from the brief's literal code;
+5. the per-wave test suite fails on a test touching the task's files —
+   promote retroactively and review before the wave closes.
+
+A missing or malformed field is `judgment`. Never downgrade a tier the plan
+set. Standard mode ignores the field: every task is reviewed.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`scripts/review-package BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer or the wave — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path. In a parallel wave, always add the task's path scope: `scripts/review-package WAVE_BASE HEAD -- <task's files>` — without it, wave-mates' interleaved commits pollute the diff.
+**DONE:** In fast mode, apply the Review tier gate first (see Fast Mode) — a transcription task with gate evidence is complete here. Otherwise generate the review package (`scripts/review-package BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer or the wave — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path. In a parallel wave, always add the task's path scope: `scripts/review-package WAVE_BASE HEAD -- <task's files>` — without it, wave-mates' interleaved commits pollute the diff.
 
 **DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
 
@@ -504,7 +531,9 @@ Done!
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip task review, or accept a report missing either verdict (spec compliance AND task quality are both required)
+- Skip task review for a judgment task, or for a transcription task whose
+  report file lacks the gate evidence; accept a report missing either
+  verdict (spec compliance AND task quality are both required)
 - Proceed with unfixed issues
 - Dispatch implementers in parallel whose file sets overlap or where one
   consumes another's interface — same-wave tasks must be independent AND

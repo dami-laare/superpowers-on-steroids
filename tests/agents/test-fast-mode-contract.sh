@@ -54,6 +54,49 @@ for token in "Ready to merge?" "With fixes"; do
     assert_in_both "final reviewer verdict" "$token" "$final_agent" "$final_tmpl"
 done
 
+# --- Re-review pair: per-finding verdict tokens the fix loop branches on ---
+rereview_tmpl="$SDD_DIR/re-review-prompt.md"
+for token in "ADDRESSED" "NOT ADDRESSED" "Fix round:"; do
+    assert_in_both "re-review verdict" "$token" "$rev_agent" "$rereview_tmpl"
+done
+
+# --- Fix loop: the SDD skill carries the breaker and one fix story ---
+assert_in_file() {
+    local label="$1" token="$2" file="$3"
+    if grep -qF -- "$token" "$file"; then
+        pass "$label: '$token' present"
+    else
+        fail "$label: '$token' missing from $(basename "$file")"
+    fi
+}
+
+assert_not_in_file_ci() {
+    local label="$1" token="$2" file="$3"
+    if grep -qiF -- "$token" "$file"; then
+        fail "$label: '$token' still present in $(basename "$file")"
+    else
+        pass "$label: '$token' absent"
+    fi
+}
+
+sdd_skill="$SDD_DIR/SKILL.md"
+assert_in_file "fix loop" "### Fix Loop" "$sdd_skill"
+assert_in_file "fix loop" "breaker-tripped" "$sdd_skill"
+assert_in_file "fix loop" "Round 3" "$sdd_skill"
+assert_in_file "fix loop" "re-review-prompt.md" "$sdd_skill"
+assert_not_in_file_ci "fix loop" "dispatch fix subagents" "$sdd_skill"
+
+if grep -qE '^\| Fix rounds 1–2 \|.*caveman-implementer' "$sdd_skill"; then
+    pass "fast mode table: fix rounds map to caveman-implementer"
+else
+    fail "fast mode table: fix rounds row missing or not mapped to caveman-implementer"
+fi
+if grep -qE '^\| Re-review \|.*caveman-reviewer' "$sdd_skill"; then
+    pass "fast mode table: re-review maps to caveman-reviewer"
+else
+    fail "fast mode table: re-review row missing or not mapped to caveman-reviewer"
+fi
+
 # --- Agent file validity: what the plugin loader will accept ---
 for f in "$AGENTS_DIR"/caveman-*.md; do
     base="$(basename "$f" .md)"

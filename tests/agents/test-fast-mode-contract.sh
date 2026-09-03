@@ -101,7 +101,7 @@ fi
 plans_skill="$REPO_ROOT/skills/writing-plans/SKILL.md"
 assert_in_file "review tier" "**Review tier:**" "$plans_skill"
 assert_in_file "review tier" "Review tier gate" "$sdd_skill"
-assert_in_file "review tier" "transcription" "$sdd_skill"
+assert_in_file "review tier" "a \`transcription\` task skips" "$sdd_skill"
 assert_in_file "review tier" "fix loop capped at 3 rounds" "$sdd_skill"
 
 # --- Agent file validity: what the plugin loader will accept ---

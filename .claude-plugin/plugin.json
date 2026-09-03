@@ -18,7 +18,7 @@
     "mode": {
       "type": "string",
       "title": "Execution mode",
-      "description": "standard = inline prompt templates (default). fast = dispatch the bundled caveman-* agents: terser reports, lower reasoning effort, smaller dispatch payloads.",
+      "description": "standard = inline prompt templates (default). fast = dispatch the bundled caveman-* agents: terser reports, lower reasoning effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. The SUPERPOWERS_MODE environment variable overrides this per session (env wins; SUPERPOWERS_MODE=standard force-disables fast).",
       "default": "standard"
     },
     "model_cheap": {

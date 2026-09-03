@@ -38,7 +38,9 @@ config_value() {
     esac
 }
 
-sp_mode="$(config_value "${CLAUDE_PLUGIN_OPTION_MODE:-}")"
+# SUPERPOWERS_MODE (env, e.g. from a project .envrc) wins over the plugin
+# option. Only "fast" emits, so SUPERPOWERS_MODE=standard force-disables.
+sp_mode="$(config_value "${SUPERPOWERS_MODE:-${CLAUDE_PLUGIN_OPTION_MODE:-}}")"
 # standard is the absence of fast, so it says nothing and emits nothing.
 if [ "$sp_mode" != "fast" ]; then
     sp_mode=""

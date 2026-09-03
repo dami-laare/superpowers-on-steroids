@@ -106,6 +106,14 @@ serialize it.]
 This drives the Execution Waves map — a task with no dependency edge and no
 file overlap runs in parallel with its wave-mates.]
 
+**Review tier:** [transcription | judgment. Write `transcription` only when
+ALL five hold: the steps below carry the complete code to write; ≤2 non-test
+files are created or edited; no new public interface; no schema, auth,
+payment, or concurrency touch; the covering tests are written out in this
+task. Anything else is `judgment`. Fast-mode execution skips the per-task
+reviewer for a transcription task whose implementer report shows green
+tests; standard mode ignores this field.]
+
 **Interfaces:**
 - Consumes: [what this task uses from earlier tasks — exact signatures]
 - Produces: [what later tasks rely on — exact function names, parameter
@@ -166,6 +174,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
 
 **4. Wave safety:** For every wave in the Execution Waves map, check that no two same-wave tasks share a file (Create/Modify/Test) and that no task's Depends on / Consumes points at a same-wave or later-wave task. A wave that violates either rule will corrupt parallel execution — move the offending task to a later wave.
+
+**5. Tier claims:** For every task marked `Review tier: transcription`, confirm all five criteria hold — complete code in the steps, ≤2 non-test files created or edited, no new public interface, no schema/auth/payment/concurrency touch, covering tests written out. Demote any task that fails one criterion to `judgment`. A missing field is read as `judgment` at execution time, so fill it in for every task.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 

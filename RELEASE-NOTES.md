@@ -39,7 +39,8 @@
   the Fast Mode table rows, the breaker text, the tier field, and that no
   "dispatch fix subagents" wording survives.
 - `tests/hooks/test-session-start.sh` covers the env override: emits alone,
-  overrides a fast option, drops whitelist failures, empty stays byte-identical.
+  overrides a fast option, drops whitelist failures without falling back,
+  empty defers to the plugin option, empty alone stays byte-identical.
 - Acceptance run protocol (go-fractals, ≥2 runs per arm) is recorded in
   `docs/specs/2026-09-04-fast-mode-speed-design.md`; not yet executed.
 

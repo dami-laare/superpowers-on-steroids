@@ -119,17 +119,20 @@ Everything inside a wave runs concurrently; waves themselves run in order.
    superpowers-on-steroids:dispatching-parallel-agents). Tell each
    implementer it is part of a parallel wave.
 3. Answer implementer questions as they arrive — the others keep working.
-4. When all report, generate ONE path-scoped review package per task:
+4. When all report, generate ONE path-scoped review package per task that
+   needs review (in fast mode apply the Review tier gate first — a
+   transcription task with gate evidence needs no package):
    `scripts/review-package WAVE_BASE HEAD -- <task's files>`. The path
    filter keeps wave-mates' interleaved commits out of each task's diff.
-5. Dispatch ALL task reviewers in a single message — reviews are
-   read-only, so they are always parallel-safe.
+5. Dispatch ALL task reviewers not closed by the gate in a single
+   message — reviews are read-only, so they are always parallel-safe.
 6. For every task with Critical/Important findings, run the **Fix Loop**
    below. Rounds run in parallel across tasks (their file sets are
    disjoint by construction); within one task, fix → re-review is serial.
 7. Run the full test suite once, after every wave commit and fix has
    landed. This is where cross-task breakage surfaces; dispatch one fix
-   subagent if it fails.
+   subagent if it fails, and if the failure touches a transcription
+   task's files, promote that task and review it before the wave closes.
 8. Append a ledger line per completed task, then start the next wave.
 
 **Failure isolation:** one BLOCKED task does not stall its wave-mates —
@@ -433,6 +436,7 @@ a ledger file, not only in todos.
 
 - [implementer-prompt.md](implementer-prompt.md) - Dispatch implementer subagent
 - [task-reviewer-prompt.md](task-reviewer-prompt.md) - Dispatch task reviewer subagent (spec compliance + code quality)
+- [re-review-prompt.md](re-review-prompt.md) - Dispatch scoped re-review after a fix round (per-finding ADDRESSED / NOT ADDRESSED)
 - Final whole-branch review: use superpowers-on-steroids:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md)
 
 In fast mode, substitute the bundled agents per the Fast Mode table above.

@@ -17,12 +17,24 @@
 # Single source of truth for the workspace location, so task-brief and
 # review-package cannot drift to different directories.
 #
-# Usage: sdd-workspace PLAN_FILE
+# Usage: sdd-workspace [PLAN_FILE]   (no argument: the unscoped .superpowers/sdd root)
 set -euo pipefail
 
-if [ $# -ne 1 ]; then
-  echo "usage: sdd-workspace PLAN_FILE" >&2
+if [ $# -gt 1 ]; then
+  echo "usage: sdd-workspace [PLAN_FILE]" >&2
   exit 2
+fi
+
+root=$(git rev-parse --show-toplevel)
+base="$root/.superpowers/sdd"
+
+# No plan in hand (review-package's default OUTFILE path): use the
+# unscoped root so the caller still gets a valid, ignored directory.
+if [ $# -eq 0 ]; then
+  mkdir -p "$base"
+  printf '*\n' > "$base/.gitignore"
+  cd "$base" && pwd
+  exit 0
 fi
 
 plan=$1
@@ -32,8 +44,6 @@ slug=$(basename "$plan" .md)
 [ -n "$slug" ] && [ "$slug" != "." ] && [ "$slug" != ".." ] \
   || { echo "cannot derive a workspace name from: $plan" >&2; exit 2; }
 
-root=$(git rev-parse --show-toplevel)
-base="$root/.superpowers/sdd"
 dir="$base/$slug"
 mkdir -p "$dir"
 printf '*\n' > "$base/.gitignore"

@@ -8,7 +8,7 @@
     {
       "name": "superpowers-on-steroids",
       "description": "Fork of Superpowers with autonomous agent-team brainstorming (proxy agent answers instead of the user)",
-      "version": "6.4.0",
+      "version": "6.5.0",
       "source": "./"
     }
   ]

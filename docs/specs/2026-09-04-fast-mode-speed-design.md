@@ -1,8 +1,8 @@
 # Fast Mode Speed: Fewer Dispatches Per Task
 
 **Date:** 2026-09-04
-**Status:** Approved (agent-team brainstorm, Proxy + Brainstormer consensus)
-**Ships as:** MINOR (contains `feat:` units) on top of v6.4.0
+**Status:** Implemented — `docs/plans/2026-09-04-fast-mode-speed.md`
+**Ships as:** v6.5.0 (MINOR)
 
 ## Problem
 
@@ -172,7 +172,7 @@ plan (Review tier) → task-brief → implementer dispatch → report file
 | `Review tier` missing or malformed | judgment |
 | Transcription report lacks GREEN evidence | Promote; no acceptance on trust |
 | Wave suite fails on a transcription task's files | Retroactive promotion before wave closes |
-| `SUPERPOWERS_MODE` fails whitelist or ≠ `fast` | Dropped; falls to plugin option; nothing emitted |
+| `SUPERPOWERS_MODE` fails whitelist or ≠ `fast` | Whitelist failure: dropped, fails closed, no block even if the plugin option is fast. Empty: deferred to the plugin option. Any other value (incl. `standard`): no block |
 | No config block at all | Hook output byte-identical; no mode announcement |
 
 ## Testing strategy

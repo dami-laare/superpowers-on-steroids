@@ -308,6 +308,63 @@ assert_command_output \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
     bash "$HOOK_UNDER_TEST"
 
+# --- SUPERPOWERS_MODE env override (per-project opt-in; env wins) ---
+env_fast_home="$(make_home config-env-fast)"
+assert_command_output \
+    "SUPERPOWERS_MODE=fast alone emits the config block" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast" \
+    "" \
+    "$env_fast_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    SUPERPOWERS_MODE=fast \
+    bash "$HOOK_UNDER_TEST"
+
+env_override_home="$(make_home config-env-override)"
+assert_command_output \
+    "SUPERPOWERS_MODE=standard force-disables a fast plugin option" \
+    "nested" \
+    "" \
+    "SUPERPOWERS_CONFIG" \
+    "$env_override_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    SUPERPOWERS_MODE=standard \
+    bash "$HOOK_UNDER_TEST"
+
+env_bogus_home="$(make_home config-env-bogus)"
+assert_command_output \
+    "SUPERPOWERS_MODE failing the whitelist is dropped and does not fall back to the plugin option (no block)" \
+    "nested" \
+    "" \
+    "SUPERPOWERS_CONFIG" \
+    "$env_bogus_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    SUPERPOWERS_MODE='fast; $(id)' \
+    bash "$HOOK_UNDER_TEST"
+
+env_unset_home="$(make_home config-env-unset)"
+assert_command_output \
+    "empty SUPERPOWERS_MODE defers to the plugin option" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast" \
+    "" \
+    "$env_unset_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    SUPERPOWERS_MODE= \
+    bash "$HOOK_UNDER_TEST"
+
+env_unset_alone_home="$(make_home config-env-unset-alone)"
+env_unset_alone_output="$(env -i PATH="${PATH:-}" HOME="$env_unset_alone_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" SUPERPOWERS_MODE= bash "$HOOK_UNDER_TEST")"
+if [[ "$env_unset_alone_output" == "$unconfigured" ]]; then
+    pass "empty SUPERPOWERS_MODE alone emits byte-identical output to no config"
+else
+    fail "empty SUPERPOWERS_MODE alone emits byte-identical output to no config"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

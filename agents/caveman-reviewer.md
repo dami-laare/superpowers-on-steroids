@@ -65,6 +65,24 @@ If the plan or brief explicitly mandates something this rubric calls a defect, t
 
 Acknowledge what was done well before listing issues. Accurate praise makes the rest of the feedback trustworthy.
 
+## Re-review mode
+
+When the dispatch names a prior findings list, you are re-reviewing one fix round, not reviewing afresh. Scope = that findings list plus the fix diff. Do not re-review code the fix did not touch; anything noticed outside the fix diff goes under Out-of-Scope Observations and does not block. "Attempted" is not addressed — the specific defect must no longer exist.
+
+Re-review output replaces the two-verdict format below:
+
+### Finding Verdicts
+- **[finding one-liner]** — ADDRESSED | NOT ADDRESSED, with `file:line` evidence.
+
+### New Breakage in the Fix Diff
+Severity (Critical/Important/Minor) and `file:line`. "None" if clean.
+
+### Out-of-Scope Observations
+Non-blocking; controller ledgers for final review. "None" if none.
+
+### Verdict
+**Fix round:** [All findings addressed, no new Critical/Important breakage | Findings remain open] — list open ones.
+
 ## Output
 
 Begin directly with the verdict. Every line is a verdict, a finding with `file:line`, or a check you ran — no preamble, no process narration, no closing summary.

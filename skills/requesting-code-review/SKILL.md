@@ -12,7 +12,7 @@ Dispatch a code reviewer subagent to catch issues before they cascade. The revie
 ## When to Request Review
 
 **Mandatory:**
-- After each task in subagent-driven development
+- After each task in subagent-driven development — in fast mode, except a transcription task closed by SDD's Review tier gate (a plan-set tier, not the controller's own "it's simple" judgment)
 - After completing major feature
 - Before merge to main
 

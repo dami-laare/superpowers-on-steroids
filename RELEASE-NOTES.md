@@ -1,5 +1,49 @@
 # Superpowers Release Notes
 
+## v6.5.0 (2026-09-04)
+
+### Fast Mode — fewer dispatches per task
+
+- **Plan-time review tiers.** writing-plans marks every task
+  `Review tier: transcription | judgment` against five criteria (complete code
+  in the steps, ≤2 non-test files, no new public interface, no
+  schema/auth/payment/concurrency touch, covering tests written out). In fast
+  mode a transcription task whose report file shows green tests closes on one
+  dispatch — no review package, no per-task reviewer. Five triggers promote a
+  task back to a full review, including a plumbing deviation and a wave-suite
+  failure on its files. Standard mode ignores the field.
+- **Brainstorming shortens to two rounds** in fast mode when a design doc path
+  or a bounded, clearly-accepted request already exists. Never skipped.
+- **`SUPERPOWERS_MODE` env override.** Plugin config is user-scope only; a
+  project can now opt in per session (env wins; `standard` force-disables).
+  Same whitelist, same block.
+- **Pre-flight announces the resolved mode** once, only when a config block is
+  present, so a fast-mode transcript describes its own review policy.
+
+### Subagent-Driven Development — fix loop bounded again
+
+- **Three-round breaker restored.** Fork commit `876960a` had removed the
+  bounded fix loop, leaving "repeat until approved". Rounds 1–2 resume the
+  task's implementer; round 3 dispatches a fresh implementer on the capable
+  tier; a trip adjudicates — open Critical → BLOCKED, Important-only →
+  ledgered under `breaker-tripped` for the final review, Minor dropped.
+- **Scoped re-review re-wired.** `re-review-prompt.md` (orphaned since the same
+  commit) is the re-review in standard mode; `caveman-reviewer` gains a
+  re-review mode with `ADDRESSED | NOT ADDRESSED` verdicts in fast mode.
+  Fix rounds and re-reviews now have fast-mode counterparts, so a wave with a
+  finding no longer drops onto the slow template path.
+
+### Internal
+
+- `tests/agents/test-fast-mode-contract.sh` asserts the re-review token pair,
+  the Fast Mode table rows, the breaker text, the tier field, and that no
+  "dispatch fix subagents" wording survives.
+- `tests/hooks/test-session-start.sh` covers the env override: emits alone,
+  overrides a fast option, drops whitelist failures without falling back,
+  empty defers to the plugin option, empty alone stays byte-identical.
+- Acceptance run protocol (go-fractals, ≥2 runs per arm) is recorded in
+  `docs/specs/2026-09-04-fast-mode-speed-design.md`; not yet executed.
+
 ## v6.4.0 (2026-08-31)
 
 ### Documentation paths — action required

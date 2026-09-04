@@ -1,7 +1,7 @@
 {
   "name": "superpowers-on-steroids",
   "description": "Fork of the Superpowers core skills library with an autonomous, agent-team brainstorming skill: a proxy agent brainstorms with subagents instead of round-tripping to the user",
-  "version": "6.4.0",
+  "version": "6.5.0",
   "homepage": "https://github.com/obra/superpowers",
   "repository": "https://github.com/obra/superpowers",
   "license": "MIT",
@@ -18,13 +18,13 @@
     "mode": {
       "type": "string",
       "title": "Execution mode",
-      "description": "standard = inline prompt templates (default). fast = dispatch the bundled caveman-* agents: terser reports, lower reasoning effort, smaller dispatch payloads.",
+      "description": "standard = inline prompt templates (default). fast = dispatch the bundled caveman-* agents: terser reports, lower reasoning effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. The SUPERPOWERS_MODE environment variable overrides this per session (env wins; SUPERPOWERS_MODE=standard force-disables fast).",
       "default": "standard"
     },
     "model_cheap": {
       "type": "string",
       "title": "Cheap tier model",
-      "description": "Model for mechanical, fully-specified work \u2014 single-file transcription tasks. Leave empty to let the agent judge what this harness offers.",
+      "description": "Model for mechanical, fully-specified work — single-file transcription tasks. Leave empty to let the agent judge what this harness offers.",
       "default": ""
     },
     "model_standard": {

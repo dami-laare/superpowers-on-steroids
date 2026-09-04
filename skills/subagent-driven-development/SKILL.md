@@ -58,7 +58,9 @@ digraph process {
         "All implementers report: implement, test, commit, self-review" [shape=box];
         "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" [shape=box];
         "Every reviewer reports spec ✅ and quality approved?" [shape=diamond];
-        "Dispatch fix subagents in parallel for Critical/Important findings (file-disjoint by construction)" [shape=box];
+        "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [shape=box];
+        "Re-review clean?" [shape=diamond];
+        "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" [shape=box];
         "Run full test suite once for the wave" [shape=box];
         "Mark wave tasks complete in todo list and progress ledger" [shape=box];
     }
@@ -76,8 +78,12 @@ digraph process {
     "Any implementer asks questions?" -> "All implementers report: implement, test, commit, self-review" [label="no"];
     "All implementers report: implement, test, commit, self-review" -> "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)";
     "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" -> "Every reviewer reports spec ✅ and quality approved?";
-    "Every reviewer reports spec ✅ and quality approved?" -> "Dispatch fix subagents in parallel for Critical/Important findings (file-disjoint by construction)" [label="no"];
-    "Dispatch fix subagents in parallel for Critical/Important findings (file-disjoint by construction)" -> "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" [label="re-review failed tasks only"];
+    "Every reviewer reports spec ✅ and quality approved?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [label="no"];
+    "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" -> "Re-review clean?";
+    "Re-review clean?" -> "Run full test suite once for the wave" [label="yes"];
+    "Re-review clean?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [label="no, R < 3"];
+    "Re-review clean?" -> "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" [label="no, R = 3"];
+    "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" -> "Run full test suite once for the wave";
     "Every reviewer reports spec ✅ and quality approved?" -> "Run full test suite once for the wave" [label="yes"];
     "Run full test suite once for the wave" -> "Mark wave tasks complete in todo list and progress ledger";
     "Mark wave tasks complete in todo list and progress ledger" -> "More waves remain?";
@@ -113,17 +119,20 @@ Everything inside a wave runs concurrently; waves themselves run in order.
    superpowers-on-steroids:dispatching-parallel-agents). Tell each
    implementer it is part of a parallel wave.
 3. Answer implementer questions as they arrive — the others keep working.
-4. When all report, generate ONE path-scoped review package per task:
+4. When all report, generate ONE path-scoped review package per task that
+   needs review (in fast mode apply the Review tier gate first — a
+   transcription task with gate evidence needs no package):
    `scripts/review-package WAVE_BASE HEAD -- <task's files>`. The path
    filter keeps wave-mates' interleaved commits out of each task's diff.
-5. Dispatch ALL task reviewers in a single message — reviews are
-   read-only, so they are always parallel-safe.
-6. Dispatch fix subagents for Critical/Important findings in parallel
-   across tasks (their file sets are disjoint by construction), then
-   re-review only the tasks that had findings — again in parallel.
+5. Dispatch ALL task reviewers not closed by the gate in a single
+   message — reviews are read-only, so they are always parallel-safe.
+6. For every task with Critical/Important findings, run the **Fix Loop**
+   below. Rounds run in parallel across tasks (their file sets are
+   disjoint by construction); within one task, fix → re-review is serial.
 7. Run the full test suite once, after every wave commit and fix has
    landed. This is where cross-task breakage surfaces; dispatch one fix
-   subagent if it fails.
+   subagent if it fails, and if the failure touches a transcription
+   task's files, promote that task and review it before the wave closes.
 8. Append a ledger line per completed task, then start the next wave.
 
 **Failure isolation:** one BLOCKED task does not stall its wave-mates —
@@ -136,6 +145,45 @@ depends on it.
 - A task and any task that consumes its Produces interface
 - Wave N+1 before every wave-N task it depends on has passed review
 - A single task's fix → re-review loop (the re-review needs the fix)
+
+### Fix Loop
+
+A task's review-fix cycle is bounded at three rounds. Count rounds per task.
+
+**Rounds 1–2: resume.** Send the reviewer's Critical/Important findings to
+the task's original implementer via SendMessage — it still holds the task
+context and takes fewer turns than a fresh fixer re-deriving the diff. In
+fast mode that is the same `superpowers-on-steroids:caveman-implementer`
+agent. If the implementer is no longer addressable, dispatch a fresh fix
+subagent on the same tier carrying the findings **and** the original brief
+path — never skip silently, and note the fallback in the ledger.
+
+**Round 3: escalate.** Dispatch a fresh implementer on the capable tier via
+the inline [implementer-prompt.md](implementer-prompt.md) in both modes —
+fast agents are model/effort-pinned and cannot be raised at dispatch. The
+capable tier resolves from `capable=` in the `<SUPERPOWERS_CONFIG>` tier
+models line when set, else the most capable model this harness offers.
+
+**After every round: scoped re-review.** Generate a fix package
+(`scripts/review-package FIX_BASE HEAD -- <task's files>`, where FIX_BASE is
+the head the previous review saw) and dispatch
+[re-review-prompt.md](re-review-prompt.md) on a cheap-to-mid tier — in fast
+mode, `superpowers-on-steroids:caveman-reviewer` in re-review mode. The
+re-review verdicts each finding `ADDRESSED | NOT ADDRESSED` and flags new
+breakage in the fix diff only; it is not a fresh review. Before dispatching
+it, confirm the fix report names the covering tests, the command run, and
+its output.
+
+**Round 3 trips.** If findings remain open after the round-3 re-review:
+- Any open **Critical** → mark the task BLOCKED. Failure isolation applies:
+  wave-mates finish, dependents wait, resolve per Handling Implementer
+  Status (BLOCKED).
+- Only **Important** open → append the findings to the ledger under a
+  `breaker-tripped` marker and continue the wave. The final whole-branch
+  review dispatch must name every `breaker-tripped` entry and triage each.
+- Open **Minor** are dropped at trip; the final reviewer sees the diff.
+
+Never accept a Critical finding by exhaustion, and never run a fourth round.
 
 ## Pre-Flight Plan Review
 
@@ -150,6 +198,13 @@ each finding beside the plan text that mandates it, asking which governs —
 before execution begins, not one interrupt per discovery mid-plan. If the
 scan is clean, proceed without comment. The review loop remains the net for
 conflicts that only emerge from implementation.
+
+If the session context carries a `<SUPERPOWERS_CONFIG>` block, state the
+resolved policy once, before wave 1, in one line: `Mode: fast — transcription
+tasks skip per-task review on green report evidence, judgment tasks reviewed;
+fix loop capped at 3 rounds`, or `Mode: standard — every task reviewed; fix
+loop capped at 3 rounds` when the block carries only tier models. With no
+block, say nothing.
 
 ## Model Selection
 
@@ -178,6 +233,8 @@ floor for reviewers and for implementers working from prose descriptions.
 When the task's plan text contains the complete code to write, the
 implementation is transcription plus testing: use the cheapest tier for
 that implementer. Single-file mechanical fixes also take the cheapest tier.
+Scoped re-reviews of small fix diffs take a cheap-to-mid tier. The round-3
+fix escalation in the Fix Loop takes the capable tier.
 
 **Task complexity signals (implementation tasks):**
 - Touches 1-2 files with a complete spec → cheap model
@@ -202,6 +259,8 @@ dispatch the bundled agents instead of pasting the inline templates:
 | Implementer | [implementer-prompt.md](implementer-prompt.md) | `superpowers-on-steroids:caveman-implementer` |
 | Task reviewer | [task-reviewer-prompt.md](task-reviewer-prompt.md) | `superpowers-on-steroids:caveman-reviewer` |
 | Final whole-branch review | [code-reviewer.md](../requesting-code-review/code-reviewer.md) | `superpowers-on-steroids:caveman-final-reviewer` |
+| Fix rounds 1–2 | resume the implementer (contract in [implementer-prompt.md](implementer-prompt.md)) | resume `superpowers-on-steroids:caveman-implementer` |
+| Re-review | [re-review-prompt.md](re-review-prompt.md) | `superpowers-on-steroids:caveman-reviewer` (re-review mode) |
 
 Each agent carries its role contract in its own system prompt, so a fast
 dispatch passes only the task-specific material: the brief path, the report
@@ -210,18 +269,38 @@ constraints that bind the task. Do not paste the template body as well — that
 duplicates the contract and throws away the context saving that is the point.
 
 Roles with no agent counterpart stay on the template path in both modes: the
-re-review, fix subagents, the spec-document reviewer, the plan-document
-reviewer, and the Brainstormer.
+round-3 fix implementer (capable tier via the inline template), the
+spec-document reviewer, the plan-document reviewer, and the Brainstormer.
 
 Model selection is unchanged in fast mode — resolve the tier as always and pass
 `model:` explicitly. Effort is fixed by each agent's definition and cannot be
 raised at dispatch.
 
+**Review tier gate.** Each plan task carries `**Review tier:** transcription |
+judgment` (writing-plans). In fast mode, a `transcription` task skips
+`review-package` and the task reviewer when the implementer's report **file**
+(not the short reply) shows status DONE, the GREEN test command, and its
+passing output — read the file to check. Ledger it as
+`Task N: complete (wave W, commits <base7>..<head7>, transcription gate)`.
+Promote the task to judgment — generate the package and dispatch the
+reviewer as normal — on any of:
+
+1. status ≠ DONE;
+2. the report file lacks the GREEN command or its output;
+3. the task's commits touch a file outside the brief's Files list
+   (`git diff --stat WAVE_BASE HEAD -- <task's files>` vs `git diff --stat WAVE_BASE HEAD`);
+4. the implementer reports a plumbing deviation from the brief's literal code;
+5. the per-wave test suite fails on a test touching the task's files —
+   promote retroactively and review before the wave closes.
+
+A missing or malformed field is `judgment`. Never downgrade a tier the plan
+set. Standard mode ignores the field: every task is reviewed.
+
 ## Handling Implementer Status
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`scripts/review-package BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer or the wave — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path. In a parallel wave, always add the task's path scope: `scripts/review-package WAVE_BASE HEAD -- <task's files>` — without it, wave-mates' interleaved commits pollute the diff.
+**DONE:** In fast mode, apply the Review tier gate first (see Fast Mode) — a transcription task with gate evidence is complete here. Otherwise generate the review package (`scripts/review-package BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer or the wave — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path. In a parallel wave, always add the task's path scope: `scripts/review-package WAVE_BASE HEAD -- <task's files>` — without it, wave-mates' interleaved commits pollute the diff.
 
 **DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
 
@@ -242,7 +321,7 @@ that live in unchanged code or span tasks. These do not block the rest of the
 review, but you must resolve each one yourself before marking the task
 complete: you hold the plan and cross-task context the reviewer
 lacks. If you confirm an item is a real gap, treat it as a failed spec
-review — send it back to the implementer and re-review.
+review — send it back through the Fix Loop.
 
 ## Constructing Reviewer Prompts
 
@@ -281,7 +360,7 @@ final whole-branch review. When you fill a reviewer template:
   later dispatches — a real session's dispatch hit 42k chars of which 99%
   was pasted history. A fresh subagent needs its task, the interfaces it
   touches, and the global constraints. Nothing else.
-- Dispatch fix subagents for Critical and Important findings. Record Minor
+- Run the Fix Loop for Critical and Important findings. Record Minor
   findings in the progress ledger as you go, and point the final
   whole-branch review at that list so it can triage which must be fixed
   before merge. A roll-up nobody reads is a silent discard.
@@ -295,12 +374,12 @@ final whole-branch review. When you fill a reviewer template:
   branch started from, e.g. `git merge-base main HEAD`) and include the
   printed path in the final review dispatch, so the final reviewer reads
   one file instead of re-deriving the branch diff with git commands.
-- Every fix dispatch carries the implementer contract: the fix subagent
-  re-runs the tests covering its change and reports the results. Name the
-  covering test files in the dispatch — a one-line fix does not need the
-  whole suite. Before re-dispatching the reviewer, confirm the fix report
-  contains the covering tests, the command run, and the output; dispatch
-  the re-review once all three are present.
+- Every fix round carries the implementer contract: the resumed (or
+  fresh) implementer re-runs the tests covering its change and appends a
+  fix report. Name the covering test files in the message — a one-line fix
+  does not need the whole suite. Before dispatching the re-review, confirm
+  the fix report contains the covering tests, the command run, and the
+  output; dispatch the re-review once all three are present.
 - If the final whole-branch review returns findings, dispatch ONE fix
   subagent with the complete findings list — not one fixer per finding.
   Per-finding fixers each rebuild context and re-run suites; a real
@@ -330,7 +409,7 @@ and is re-read on every later turn. Hand artifacts over as files:
 - **Reviewer inputs:** the task reviewer gets three paths — the same brief
   file, the report file, and the review package — plus the global
   constraints that bind the task.
-- Fix dispatches append their fix report (with test results) to the same
+- Fix rounds append their fix report (with test results) to the same
   report file and return a short summary; re-reviews read the updated file.
 
 ## Durable Progress
@@ -357,6 +436,7 @@ a ledger file, not only in todos.
 
 - [implementer-prompt.md](implementer-prompt.md) - Dispatch implementer subagent
 - [task-reviewer-prompt.md](task-reviewer-prompt.md) - Dispatch task reviewer subagent (spec compliance + code quality)
+- [re-review-prompt.md](re-review-prompt.md) - Dispatch scoped re-review after a fix round (per-finding ADDRESSED / NOT ADDRESSED)
 - Final whole-branch review: use superpowers-on-steroids:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md)
 
 In fast mode, substitute the bundled agents per the Fast Mode table above.
@@ -395,11 +475,13 @@ Reviewer 2: Spec ❌:
   - Extra: Added --json flag (not requested)
   Issues (Important): Magic number (100)
 
-[Dispatch fix subagent for Task 2 findings]
-Fixer: Removed --json flag, added progress reporting, extracted PROGRESS_INTERVAL constant
+[Fix round 1: resume Implementer 2 with Reviewer 2's findings]
+Implementer 2: Removed --json flag, added progress reporting, extracted
+  PROGRESS_INTERVAL constant. Fix report appended, 9/9 tests passing.
 
-[Re-run review-package for Task 2's files; re-dispatch Reviewer 2 only]
-Reviewer 2: Spec ✅. Task quality: Approved.
+[review-package FIX_BASE HEAD -- <Task 2 files>; dispatch scoped re-review]
+Re-reviewer 2: Missing progress reporting — ADDRESSED. Extra --json — ADDRESSED.
+  Magic number — ADDRESSED. New breakage: none. Fix round: all findings addressed.
 
 [Run full test suite once for the wave — green]
 [Ledger: Task 1 complete (wave 1), Task 2 complete (wave 1)]
@@ -453,7 +535,9 @@ Done!
 
 **Never:**
 - Start implementation on main/master branch without explicit user consent
-- Skip task review, or accept a report missing either verdict (spec compliance AND task quality are both required)
+- Skip task review for a judgment task, or for a transcription task whose
+  report file lacks the gate evidence; accept a report missing either
+  verdict (spec compliance AND task quality are both required)
 - Proceed with unfixed issues
 - Dispatch implementers in parallel whose file sets overlap or where one
   consumes another's interface — same-wave tasks must be independent AND
@@ -485,13 +569,15 @@ Done!
 - Don't rush them into implementation
 
 **If reviewer finds issues:**
-- Implementer (same subagent) fixes them
-- Reviewer reviews again
-- Repeat until approved
-- Don't skip the re-review
+- Fix round 1–2: resume the same implementer with the findings
+- Scoped re-review after every round (`re-review-prompt.md`); never skip it
+- Round 3: fresh implementer on the capable tier
+- Round 3 trips: open Critical → BLOCKED; Important-only → ledger
+  `breaker-tripped` and continue; never a fourth round
 
 **If subagent fails task:**
-- Dispatch fix subagent with specific instructions
+- Follow Handling Implementer Status (BLOCKED) — more context, capable
+  tier, or a task split
 - Don't try to fix manually (context pollution)
 
 ## Integration

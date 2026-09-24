@@ -42,7 +42,7 @@ config-blind or below-floor `caveman-*` dispatch with a message naming the exact
    `SUPERPOWERS_MODEL_*`.
 3. **`hooks/agent-tier-gate`** (new, extensionless) — Claude Code PreToolUse
    hook, registered in `hooks.json` with matcher `Agent|Task`, command
-   `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" agent-tier-gate`, `shell: bash`,
+   `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" agent-tier-gate || true`, `shell: bash`,
    `async: false`. Not registered in `hooks-cursor.json`.
 4. **Text** — tier table in SDD, re-review tier change, one clause each in
    brainstorming and requesting-code-review, investigator `effort: medium`,
@@ -64,7 +64,7 @@ unset).
   `SUPERPOWERS_MODEL_<NAME>` wins over `CLAUDE_PLUGIN_OPTION_MODEL_<NAME>`;
   result passed through `config_value`.
 - No `set -e`/`set -u`, no associative arrays, no `${v,,}`, no external commands.
-  `# shellcheck shell=bash` directive.
+  A `#!/usr/bin/env bash` shebang so shell-lint discovers it.
 
 ### `hooks/agent-tier-gate`
 
@@ -106,8 +106,8 @@ caller's raw `model` is never echoed, so no JSON escaping is needed.
 Deny wording (one or two sentences):
 
 - `caveman-reviewer runs config-blind without model: pass model: "sonnet" (standard tier) on this Agent call.`
-- `caveman-implementer runs config-blind without model: pass model: "haiku" (cheap — transcription/single-file) or "sonnet" (standard — integration/judgment).` — configured tiers only.
-- `caveman-final-reviewer needs the capable tier or higher: pass model: "opus".`
+- `caveman-implementer runs config-blind without model: pass model: "haiku" (cheap tier, transcription or single-file work) or "sonnet" (standard tier, integration or judgment work) on this Agent call.` — configured tiers only.
+- `caveman-final-reviewer needs the capable tier or higher: pass model: "opus" on this Agent call.`
 
 ### Text changes
 
@@ -156,8 +156,9 @@ Deny wording (one or two sentences):
 ## Error handling
 
 Fail open everywhere. No `set -e`/`set -u`; every path ends `exit 0`; never
-`exit 2`. An unexpected abort exits non-zero but not 2, which Claude Code treats
-as a non-blocking error — a broken gate can never block dispatch. Windows
+`exit 2`. `hooks.json` runs the gate as `… agent-tier-gate || true`, so any
+failure — including a bash parse error, which would otherwise exit 2 and block
+the tool — is non-blocking. Windows
 without bash: `run-hook.cmd` already exits 0. Garbage config is filtered by
 `config_value` and counts as unconfigured. Unknown models are allowed. A
 configured non-alias value is documented user error (not detectable without a
@@ -187,14 +188,14 @@ node (tests only) validates output. Deny → valid JSON, `permissionDecision:
 
 Plus: `hooks.json` has a PreToolUse entry with matcher `Agent|Task`, `shell:
 "bash"`, command running `run-hook.cmd agent-tier-gate`; `hooks-cursor.json`
-does not register it.
+does not register it; each caveman agent appears in the SDD tier table with
+its tier, and the gate's `case` carries the same agent→tier pairs (table and
+enforcer cannot drift).
 
 **`tests/hooks/test-session-start.sh`:** `SUPERPOWERS_MODEL_*` emitted; env
 beats option; empty env falls back to option; whitelist-failing env value dropped.
 
 **`tests/agents/test-fast-mode-contract.sh`:** investigator `effort: medium`;
-each caveman agent appears in the SDD tier table with its tier, and the gate's
-`case` carries the same agent→tier pairs (table and enforcer cannot drift);
 brainstorming and requesting-code-review clauses name their tier; SDD fast-mode
 re-review says standard.
 

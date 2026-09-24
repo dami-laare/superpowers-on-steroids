@@ -112,7 +112,7 @@ assert_in_file "tier table" '| `caveman-final-reviewer` | capable | capable |' "
 assert_in_file "tier table" 'Every `superpowers-on-steroids:caveman-*`' "$sdd_skill"
 assert_in_file "re-review tier" 'in re-review mode on the standard tier' "$sdd_skill"
 assert_in_file "re-review tier" "fast mode's \`caveman-reviewer\` re-review takes the standard tier" "$sdd_skill"
-assert_in_file "re-review tier" "fast mode's" "$rereview_tmpl"
+assert_in_file "re-review tier" '`caveman-reviewer` re-review takes the standard tier' "$rereview_tmpl"
 assert_in_file "investigator tier" '`superpowers-on-steroids:caveman-investigator` on the standard tier' \
     "$REPO_ROOT/skills/brainstorming/SKILL.md"
 assert_in_file "final reviewer tier" '`superpowers-on-steroids:caveman-final-reviewer` on the capable tier' \

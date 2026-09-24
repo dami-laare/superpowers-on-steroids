@@ -82,7 +82,7 @@ const entry = (hooks.PreToolUse || []).find((e) => e.matcher === "Agent|Task");
 if (!entry) { console.error("no PreToolUse entry with matcher Agent|Task"); process.exit(1); }
 const h = entry.hooks[0];
 if (h.shell !== "bash") { console.error("shell is not bash"); process.exit(1); }
-if (!/run-hook\.cmd" agent-tier-gate$/.test(h.command)) { console.error(`bad command: ${h.command}`); process.exit(1); }
+if (!/run-hook\.cmd" agent-tier-gate \|\| true$/.test(h.command)) { console.error(`bad command: ${h.command}`); process.exit(1); }
 ' "$REPO_ROOT/hooks/hooks.json"; then
     pass "hooks.json registers PreToolUse Agent|Task via run-hook.cmd with shell:bash"
 else

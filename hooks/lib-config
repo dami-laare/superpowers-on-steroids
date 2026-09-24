@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Shared config resolution for the superpowers hooks. Sourced, not run.
+# No set -e/-u here: each caller picks its own error policy.
+
+# Claude Code exports userConfig options as CLAUDE_PLUGIN_OPTION_<KEY>.
+# Whitelist rather than escape: a value that cannot match this pattern
+# cannot corrupt the JSON the hooks assemble.
+config_value() {
+    local raw="${1:-}"
+    case "$raw" in
+        "") return 0 ;;
+        *[!A-Za-z0-9._-]*) return 0 ;;
+        *) printf '%s' "$raw" ;;
+    esac
+}
+
+# SUPERPOWERS_MODE (env, e.g. from a project .envrc) wins over the plugin
+# option. Only "fast" prints, so SUPERPOWERS_MODE=standard force-disables.
+sp_resolve_mode() {
+    local mode
+    mode="$(config_value "${SUPERPOWERS_MODE:-${CLAUDE_PLUGIN_OPTION_MODE:-}}")"
+    if [ "$mode" = "fast" ]; then
+        printf 'fast'
+    fi
+}
+
+# Tier model for cheap|standard|capable. A non-empty SUPERPOWERS_MODEL_<TIER>
+# wins over the plugin option, same as SUPERPOWERS_MODE.
+sp_resolve_tier() {
+    local env_raw="" opt_raw=""
+    case "${1:-}" in
+        cheap)
+            env_raw="${SUPERPOWERS_MODEL_CHEAP:-}"
+            opt_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CHEAP:-}"
+            ;;
+        standard)
+            env_raw="${SUPERPOWERS_MODEL_STANDARD:-}"
+            opt_raw="${CLAUDE_PLUGIN_OPTION_MODEL_STANDARD:-}"
+            ;;
+        capable)
+            env_raw="${SUPERPOWERS_MODEL_CAPABLE:-}"
+            opt_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE:-}"
+            ;;
+        *) return 0 ;;
+    esac
+    config_value "${env_raw:-$opt_raw}"
+}

@@ -36,7 +36,8 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 If the session context carries `<SUPERPOWERS_CONFIG>` with `mode: fast`, first run
 `scripts/review-package BASE_SHA HEAD_SHA` (from subagent-driven-development's
 directory) and note the printed path — the agent expects to read a review
-package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer` instead,
+package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer` on the capable tier
+(see subagent-driven-development Model Selection) instead,
 passing it the printed package path plus the four placeholder values below.
 
 **Placeholders:**

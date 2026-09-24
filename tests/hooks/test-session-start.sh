@@ -365,6 +365,56 @@ else
     fail "empty SUPERPOWERS_MODE alone emits byte-identical output to no config"
 fi
 
+# --- SUPERPOWERS_MODEL_* env override (env wins, like SUPERPOWERS_MODE) ---
+env_tiers_home="$(make_home config-env-tiers)"
+assert_command_output \
+    "SUPERPOWERS_MODEL_* alone emits the tier models line" \
+    "nested" \
+    "tier models: cheap=haiku standard=sonnet capable=opus" \
+    "" \
+    "$env_tiers_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    SUPERPOWERS_MODEL_CHEAP=haiku \
+    SUPERPOWERS_MODEL_STANDARD=sonnet \
+    SUPERPOWERS_MODEL_CAPABLE=opus \
+    bash "$HOOK_UNDER_TEST"
+
+env_tier_wins_home="$(make_home config-env-tier-wins)"
+assert_command_output \
+    "SUPERPOWERS_MODEL_STANDARD wins over the plugin option" \
+    "nested" \
+    "tier models: standard=opus" \
+    "standard=sonnet" \
+    "$env_tier_wins_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODEL_STANDARD=sonnet \
+    SUPERPOWERS_MODEL_STANDARD=opus \
+    bash "$HOOK_UNDER_TEST"
+
+env_tier_empty_home="$(make_home config-env-tier-empty)"
+assert_command_output \
+    "empty SUPERPOWERS_MODEL_STANDARD defers to the plugin option" \
+    "nested" \
+    "tier models: standard=sonnet" \
+    "" \
+    "$env_tier_empty_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODEL_STANDARD=sonnet \
+    SUPERPOWERS_MODEL_STANDARD= \
+    bash "$HOOK_UNDER_TEST"
+
+env_tier_bogus_home="$(make_home config-env-tier-bogus)"
+assert_command_output \
+    "SUPERPOWERS_MODEL_* failing the whitelist is dropped without falling back" \
+    "nested" \
+    "" \
+    "SUPERPOWERS_CONFIG"$'\037'"x/y" \
+    "$env_tier_bogus_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODEL_STANDARD=sonnet \
+    SUPERPOWERS_MODEL_STANDARD='x/y' \
+    bash "$HOOK_UNDER_TEST"
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

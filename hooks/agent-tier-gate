@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+# PreToolUse gate for Claude Code Agent dispatches of the caveman-* agents.
+# Denies a dispatch that would run config-blind (no model: while its tier is
+# configured) or below its tier floor. Fails open on anything unexpected:
+# a broken gate must never block dispatch. No set -e/-u on purpose.
+
+# Only Claude Code has this contract. Cursor and Copilot CLI may run the
+# same hook files; stay out of their way.
+[ -n "${CURSOR_PLUGIN_ROOT:-}" ] && exit 0
+[ -n "${COPILOT_CLI:-}" ] && exit 0
+[ -z "${CLAUDE_PLUGIN_ROOT:-}" ] && exit 0
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)" || exit 0
+# shellcheck source=lib-config
+. "${SCRIPT_DIR}/lib-config" 2>/dev/null || exit 0
+
+input=""
+IFS= read -r -d '' input
+[ -n "$input" ] || exit 0
+
+# Walk the JSON one quote at a time with read -d, which stays linear where
+# bash 3.2's pattern expansions go quadratic on big prompts. Segments
+# alternate structure / string. A quote after an odd run of backslashes is
+# escaped and keeps the string open, so prompt text can never pose as a key.
+# Only tool_input's own keys (depth 2 under the depth-1 "tool_input") count.
+depth=0
+ti_state=0 # 0 not seen, 1 inside, 2 closed
+in_str=0
+str=""
+key=""
+pending="" # key whose string value comes next
+subagent="" subagent_seen=0
+model="" model_seen=0
+done_reading=0
+
+count_depth() {
+    local opens="${1//[^\{\[]/}" closes="${1//[^\}\]]/}"
+    depth=$((depth + ${#opens} - ${#closes}))
+}
+
+while [ "$done_reading" -eq 0 ]; do
+    seg=""
+    IFS= read -r -d '"' seg || done_reading=1
+
+    if [ "$in_str" -eq 1 ]; then
+        # Input ended inside a string.
+        [ "$done_reading" -eq 1 ] && exit 0
+        body="$seg"
+        slashes=0
+        while [ "${body%\\}" != "$body" ]; do
+            body="${body%\\}"
+            slashes=$((slashes + 1))
+        done
+        # Keys and model names are short; capping keeps huge prompts linear.
+        if [ "${#str}" -lt 256 ]; then
+            str="$str$seg"
+            [ $((slashes % 2)) -eq 1 ] && str="$str\""
+        fi
+        [ $((slashes % 2)) -eq 1 ] && continue
+        in_str=0
+        if [ -n "$pending" ]; then
+            case "$pending" in
+                subagent_type) subagent="$str" ;;
+                model) model="$str" ;;
+            esac
+            pending=""
+        else
+            key="$str"
+        fi
+        str=""
+        continue
+    fi
+
+    # Structure segment. A string followed by ':' was a key.
+    if [ -n "$key" ]; then
+        after="${seg#"${seg%%[![:space:]]*}"}"
+        case "$after" in
+            :*)
+                value="${after#:}"
+                value="${value#"${value%%[![:space:]]*}"}"
+                if [ "$depth" -eq 1 ] && [ "$key" = "tool_input" ]; then
+                    [ "$ti_state" -eq 0 ] || exit 0
+                    case "$value" in
+                        \{*) ti_state=1 ;;
+                        *) exit 0 ;;
+                    esac
+                elif [ "$ti_state" -eq 1 ] && [ "$depth" -eq 2 ]; then
+                    case "$key" in
+                        subagent_type)
+                            [ "$subagent_seen" -eq 0 ] || exit 0
+                            subagent_seen=1
+                            case "$value" in
+                                "") pending="subagent_type" ;;
+                                *) exit 0 ;;
+                            esac
+                            ;;
+                        model)
+                            [ "$model_seen" -eq 0 ] || exit 0
+                            model_seen=1
+                            case "$value" in
+                                "") pending="model" ;;
+                                null*) model="" ;;
+                                *) exit 0 ;;
+                            esac
+                            ;;
+                    esac
+                fi
+                ;;
+        esac
+        key=""
+    fi
+
+    count_depth "$seg"
+    if [ "$ti_state" -eq 1 ] && [ "$depth" -lt 2 ]; then
+        ti_state=2
+    fi
+    [ "$done_reading" -eq 0 ] && in_str=1
+done <<<"$input"
+
+[ "$depth" -eq 0 ] || exit 0
+[ "$ti_state" -eq 2 ] || exit 0
+[ -z "$pending" ] || exit 0
+
+# Tier policy. Keep in step with the tier table in
+# skills/subagent-driven-development/SKILL.md (Model Selection).
+case "$subagent" in
+    superpowers-on-steroids:caveman-implementer) agent="caveman-implementer" tiers="cheap standard" floor="" ;;
+    superpowers-on-steroids:caveman-reviewer) agent="caveman-reviewer" tiers="standard" floor="standard" ;;
+    superpowers-on-steroids:caveman-investigator) agent="caveman-investigator" tiers="standard" floor="" ;;
+    superpowers-on-steroids:caveman-final-reviewer) agent="caveman-final-reviewer" tiers="capable" floor="capable" ;;
+    *) exit 0 ;;
+esac
+
+tier_cheap="$(sp_resolve_tier cheap)"
+tier_standard="$(sp_resolve_tier standard)"
+tier_capable="$(sp_resolve_tier capable)"
+
+tier_model() {
+    case "$1" in
+        cheap) printf '%s' "$tier_cheap" ;;
+        standard) printf '%s' "$tier_standard" ;;
+        capable) printf '%s' "$tier_capable" ;;
+    esac
+}
+
+tier_rank() {
+    case "$1" in
+        cheap) printf 1 ;;
+        standard) printf 2 ;;
+        capable) printf 3 ;;
+    esac
+}
+
+builtin_rank() {
+    case "$1" in
+        haiku) printf 1 ;;
+        sonnet) printf 2 ;;
+        opus) printf 3 ;;
+        *) printf 0 ;;
+    esac
+}
+
+builtin_name() {
+    case "$1" in
+        standard) printf sonnet ;;
+        capable) printf opus ;;
+    esac
+}
+
+# Reasons carry only fixed text and whitelisted config values, so the only
+# JSON escaping needed is around the quoted model names.
+q='\"'
+
+deny() {
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$1"
+    exit 0
+}
+
+if [ -z "$model" ]; then
+    offer=""
+    for t in $tiers; do
+        v="$(tier_model "$t")"
+        [ -n "$v" ] || continue
+        if [ "$agent" = "caveman-implementer" ]; then
+            case "$t" in
+                cheap) label="cheap tier, transcription or single-file work" ;;
+                standard) label="standard tier, integration or judgment work" ;;
+            esac
+        else
+            label="$t tier"
+        fi
+        [ -n "$offer" ] && offer="$offer or "
+        offer="${offer}${q}${v}${q} (${label})"
+    done
+    # Nothing configured: the agent's frontmatter model is the default.
+    [ -n "$offer" ] || exit 0
+    deny "$agent runs config-blind without model: pass model: $offer on this Agent call."
+fi
+
+[ -n "$floor" ] || exit 0
+
+# Rank against the configured tiers only when the floor tier itself is
+# configured. With it unconfigured the gate names a built-in model, and a
+# configured lower tier sharing that name must not deny it again.
+floor_model="$(tier_model "$floor")"
+rank=0
+if [ -n "$floor_model" ]; then
+    for t in cheap standard capable; do
+        v="$(tier_model "$t")"
+        [ -n "$v" ] && [ "$model" = "$v" ] && rank="$(tier_rank "$t")"
+    done
+fi
+[ "$rank" -eq 0 ] && rank="$(builtin_rank "$model")"
+# Unknown model: not ours to judge.
+[ "$rank" -eq 0 ] && exit 0
+[ "$rank" -ge "$(tier_rank "$floor")" ] && exit 0
+
+[ -n "$floor_model" ] || floor_model="$(builtin_name "$floor")"
+deny "$agent needs the $floor tier or higher: pass model: ${q}${floor_model}${q} on this Agent call."

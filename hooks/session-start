@@ -26,35 +26,17 @@ escape_for_json() {
 using_superpowers_escaped=$(escape_for_json "$using_superpowers_content")
 
 # Per-plugin config. Claude Code exports userConfig options as
-# CLAUDE_PLUGIN_OPTION_<KEY> (key uppercased, non-alphanumerics -> _).
-# Whitelist rather than escape: a value that cannot match this pattern
-# cannot corrupt the JSON string assembled below.
-config_value() {
-    local raw="${1:-}"
-    case "$raw" in
-        "") return 0 ;;
-        *[!A-Za-z0-9._-]*) return 0 ;;
-        *) printf '%s' "$raw" ;;
-    esac
-}
+# CLAUDE_PLUGIN_OPTION_<KEY>; lib-config applies the SUPERPOWERS_* env
+# overrides and the whitelist that keeps the JSON below intact.
+# shellcheck source=lib-config
+. "${SCRIPT_DIR}/lib-config"
 
-# SUPERPOWERS_MODE (env, e.g. from a project .envrc) wins over the plugin
-# option. Only "fast" emits, so SUPERPOWERS_MODE=standard force-disables.
-sp_mode="$(config_value "${SUPERPOWERS_MODE:-${CLAUDE_PLUGIN_OPTION_MODE:-}}")"
 # standard is the absence of fast, so it says nothing and emits nothing.
-if [ "$sp_mode" != "fast" ]; then
-    sp_mode=""
-fi
+sp_mode="$(sp_resolve_mode)"
 
 sp_tiers=""
 for tier_name in cheap standard capable; do
-    case "$tier_name" in
-        cheap)    tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CHEAP:-}" ;;
-        standard) tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_STANDARD:-}" ;;
-        capable)  tier_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE:-}" ;;
-        *)        tier_raw="" ;;
-    esac
-    tier_model="$(config_value "$tier_raw")"
+    tier_model="$(sp_resolve_tier "$tier_name")"
     if [ -n "$tier_model" ]; then
         sp_tiers="${sp_tiers} ${tier_name}=${tier_model}"
     fi

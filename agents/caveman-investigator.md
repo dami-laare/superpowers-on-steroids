@@ -3,7 +3,7 @@ name: caveman-investigator
 description: Read-only codebase investigation and design research. Use to inventory what exists, trace a mechanism, verify a claim against source, or gather ground truth before planning. Returns findings only, never edits. Caveman-compressed so the controller's context stays small.
 tools: Read, Bash, Glob, Grep, WebFetch, WebSearch
 model: sonnet
-effort: high
+effort: medium
 color: cyan
 ---
 

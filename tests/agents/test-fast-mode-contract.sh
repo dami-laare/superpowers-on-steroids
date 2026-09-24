@@ -104,6 +104,30 @@ assert_in_file "review tier" "Review tier gate" "$sdd_skill"
 assert_in_file "review tier" "a \`transcription\` task skips" "$sdd_skill"
 assert_in_file "review tier" "fix loop capped at 3 rounds" "$sdd_skill"
 
+# --- Tier table: every caveman agent has a tier; dispatching skills name theirs ---
+assert_in_file "tier table" '| `caveman-implementer` | cheap or standard | none |' "$sdd_skill"
+assert_in_file "tier table" '| `caveman-reviewer` | standard | standard |' "$sdd_skill"
+assert_in_file "tier table" '| `caveman-investigator` | standard | none |' "$sdd_skill"
+assert_in_file "tier table" '| `caveman-final-reviewer` | capable | capable |' "$sdd_skill"
+assert_in_file "tier table" 'Every `superpowers-on-steroids:caveman-*`' "$sdd_skill"
+assert_in_file "re-review tier" 'in re-review mode on the standard tier' "$sdd_skill"
+assert_in_file "re-review tier" "fast mode's \`caveman-reviewer\` re-review takes the standard tier" "$sdd_skill"
+assert_in_file "re-review tier" '`caveman-reviewer` re-review takes the standard tier' "$rereview_tmpl"
+assert_in_file "investigator tier" '`superpowers-on-steroids:caveman-investigator` on the standard tier' \
+    "$REPO_ROOT/skills/brainstorming/SKILL.md"
+assert_in_file "final reviewer tier" '`superpowers-on-steroids:caveman-final-reviewer` on the capable tier' \
+    "$REPO_ROOT/skills/requesting-code-review/SKILL.md"
+for tier in CHEAP STANDARD CAPABLE; do
+    assert_in_file "plugin.json env override" "SUPERPOWERS_MODEL_${tier}" "$REPO_ROOT/.claude-plugin/plugin.json"
+done
+
+# Fast mode promises lower effort, and effort cannot be raised at dispatch.
+if grep -qE '^effort: medium$' "$AGENTS_DIR/caveman-investigator.md"; then
+    pass "caveman-investigator: effort medium"
+else
+    fail "caveman-investigator: effort must be medium"
+fi
+
 # --- Agent file validity: what the plugin loader will accept ---
 for f in "$AGENTS_DIR"/caveman-*.md; do
     base="$(basename "$f" .md)"

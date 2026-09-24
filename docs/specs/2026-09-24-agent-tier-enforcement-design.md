@@ -87,10 +87,14 @@ the message would name is configured. Nothing configured → frontmatter pin
 applies; that is the designed default.
 
 **Floor rule** (runs when a floor exists and `model` is present):
-`rank(v)` = highest tier index (cheap=1, standard=2, capable=3) whose configured
-value equals `v`; else built-in haiku=1, sonnet=2, opus=3; else unknown → allow.
-Deny when `rank(model) < floor`. The named model is the floor tier's configured
-value, else the built-in name for that rank.
+`rank(v)` = when the floor tier itself is configured, the highest tier index
+(cheap=1, standard=2, capable=3) whose configured value equals `v`; otherwise,
+or when nothing matches, built-in haiku=1, sonnet=2, opus=3; else unknown →
+allow. Deny when `rank(model) < floor`. The named model is the floor tier's
+configured value, else the built-in name for that rank. (Ranking against a
+configured lower tier while the floor tier is unconfigured could deny the very
+built-in name the gate tells the caller to pass — e.g. `cheap=sonnet` with no
+standard tier would loop a reviewer on sonnet.)
 
 **Deny output:** exit 0, `printf` (no heredoc — bash 5.3 hang, issue #571):
 `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"..."}}`.
@@ -128,18 +132,23 @@ Deny wording (one or two sentences):
 
 1. Read stdin; empty → allow.
 2. Environment guard (Cursor / Copilot / no plugin root) → allow.
-3. Strip `\\` first, then `\"`. Order matters: in `\\"` (escaped backslash then
-   the real closing quote), stripping `\"` first eats the real quote and
-   desyncs the walk. After both passes, every remaining `"` is a real string
-   delimiter, so prompt text like `\"model\": \"haiku\"` can never look like a key.
-4. Segment walk with `${s%%\"*}` / `${s#*\"}`: segments alternate structural,
-   string, structural… Cost is O(n) per real quote, and real quotes are few
-   because prompt quotes were stripped. Track brace depth from structural
-   segments (`{`/`[` vs `}`/`]`). A string is a key when the next structural
-   segment starts with optional whitespace then `:`. Its value is the next
-   string when the separating structural segment is only `:` plus whitespace;
-   a literal `null` (or any non-string) there means omitted. Keys count only at
-   depth 2 inside the depth-1 `tool_input` object; stop when depth returns to 1.
+3. Segment walk: `IFS= read -r -d '"' seg` over a here-string yields the text
+   between consecutive quotes. Segments alternate structural, string,
+   structural… Inside a string, a quote preceded by an odd run of backslashes
+   is escaped and the string continues; an even run (including `\\"`, an
+   escaped backslash then the real closing quote) closes it. So prompt text
+   like `\"model\": \"haiku\"` can never look like a key. String content is
+   accumulated only up to 256 characters — keys and model names are short, and
+   the cap keeps prompts full of escaped quotes linear.
+   (Prototyping showed bash 3.2's `${s#*\"}` and friends go quadratic — ~1 s
+   at 40 KB — while `read -d` stays linear: a 132 KB payload with 8,000
+   escaped quotes runs in under a second on macOS `/bin/bash` 3.2.)
+4. Track brace depth from structural segments (`{`/`[` vs `}`/`]`). A string
+   is a key when the next structural segment starts with optional whitespace
+   then `:`. Its value is the next string when the separating structural
+   segment is only `:` plus whitespace; a literal `null` there means omitted;
+   any other non-string value is ambiguous. Keys count only at depth 2 inside
+   the depth-1 `tool_input` object; stop when depth returns to 1.
 5. Ambiguity → allow: no `tool_input`, duplicate key inside it, unbalanced walk,
    end of input inside a string.
 6. Resolve tiers via lib-config; apply omission rule, then floor rule.
@@ -204,7 +213,8 @@ re-review says standard.
 - Omission denied only when a named tier is configured — unconfigured frontmatter pin is the designed default.
 - Floor always runs: configured values, then haiku < sonnet < opus, unknown allowed — catches haiku reviewers without config and asserts nothing about other aliases.
 - Shared value ranks at its highest tier — `standard=capable=opus` satisfies the capable floor.
-- Strip `\\` then `\"`, then segment walk — stays in sync, cheap, exact `tool_input` slice.
+- `read -d '"'` segment walk with backslash-parity escape detection — exact `tool_input` slice, linear on bash 3.2 (the parameter-expansion walk agreed in dialogue measured quadratic in prototyping).
+- Floor ranks against configured tiers only when the floor tier is configured — prevents a deny loop on the built-in name the gate itself suggests.
 - Exit 0 + structured deny, never exit 2, fail open — a broken enforcer must never block dispatch.
 - Raw passed model never echoed — reason contains only fixed text and whitelisted values.
 - Tier table once in SDD; other skills reference it.
@@ -220,6 +230,7 @@ re-review says standard.
 - Presence-only gate, no floor — leaves the observed haiku-reviewer violations unenforced.
 - Deny omission without config — friction where nothing is wrong.
 - Per-character bash tokenizer — O(n²)-prone on bash 3.2, more code.
+- Global `${s//\\\\/}` strip + `${s%%\"*}`/`${s#*\"}` walk — measured quadratic on bash 3.2.
 - jq when present, else fail open — machine-dependent behaviour; breaks zero-dependency.
 - Hardcoded alias list — goes stale (`fable` already proves it).
 - `fable` or other aliases in the built-in rank — their order relative to opus is not ours to assert.

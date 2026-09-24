@@ -160,7 +160,7 @@ path — never skip silently, and note the fallback in the ledger.
 
 **Round 3: escalate.** Dispatch a fresh implementer on the capable tier via
 the inline [implementer-prompt.md](implementer-prompt.md) in both modes —
-fast agents are model/effort-pinned and cannot be raised at dispatch. The
+fast agents are effort-pinned and effort cannot be raised at dispatch. The
 capable tier resolves from `capable=` in the `<SUPERPOWERS_CONFIG>` tier
 models line when set, else the most capable model this harness offers.
 
@@ -224,8 +224,9 @@ diff's size, complexity, and risk. A small mechanical diff does not need the
 most capable model; a subtle concurrency change does.
 
 **Always specify the model explicitly when dispatching a subagent.** An
-omitted model inherits your session's model — often the most capable and
-most expensive — which silently defeats this section.
+omitted model inherits your session's model on a general-purpose subagent —
+often the most capable and most expensive — and the bundled agent's pinned
+model on a `caveman-*` agent; either way it silently defeats this section.
 
 **Turn count beats token price.** Wall-clock and context cost scale with how
 many turns a subagent takes, and the cheapest models routinely take 2-3× the

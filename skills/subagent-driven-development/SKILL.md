@@ -168,7 +168,8 @@ models line when set, else the most capable model this harness offers.
 (`scripts/review-package FIX_BASE HEAD -- <task's files>`, where FIX_BASE is
 the head the previous review saw) and dispatch
 [re-review-prompt.md](re-review-prompt.md) on a cheap-to-mid tier — in fast
-mode, `superpowers-on-steroids:caveman-reviewer` in re-review mode. The
+mode, `superpowers-on-steroids:caveman-reviewer` in re-review mode on the standard tier
+(its floor; see Model Selection). The
 re-review verdicts each finding `ADDRESSED | NOT ADDRESSED` and flags new
 breakage in the fix diff only; it is not a fresh review. Before dispatching
 it, confirm the fix report names the covering tests, the command run, and
@@ -233,8 +234,9 @@ floor for reviewers and for implementers working from prose descriptions.
 When the task's plan text contains the complete code to write, the
 implementation is transcription plus testing: use the cheapest tier for
 that implementer. Single-file mechanical fixes also take the cheapest tier.
-Scoped re-reviews of small fix diffs take a cheap-to-mid tier. The round-3
-fix escalation in the Fix Loop takes the capable tier.
+Scoped re-reviews of small fix diffs take a cheap-to-mid tier on the inline
+template; fast mode's `caveman-reviewer` re-review takes the standard tier.
+The round-3 fix escalation in the Fix Loop takes the capable tier.
 
 **Task complexity signals (implementation tasks):**
 - Touches 1-2 files with a complete spec → cheap model
@@ -248,6 +250,20 @@ tiers the block does not name, and when there is no block at all, judge what
 this harness offers. Config decides what each tier *is*; it never decides which
 tier a task *needs* — that stays with the heuristics above, including the
 mid-tier floor for reviewers.
+
+**The bundled agents take fixed tiers.** Every `superpowers-on-steroids:caveman-*`
+dispatch passes `model:` explicitly, resolved from the tier below. An omitted
+model falls back to the agent's pinned frontmatter model and ignores the
+configured tiers. On Claude Code a hook denies a `caveman-*` dispatch that
+omits `model:` while its tier is configured, or that falls below its floor,
+and names the model to pass.
+
+| Agent | Tier | Floor | When |
+|---|---|---|---|
+| `caveman-implementer` | cheap or standard | none | cheap when the brief carries the complete code or the fix is single-file; standard for integration and judgment |
+| `caveman-reviewer` | standard | standard | every task review, and every fast-mode re-review |
+| `caveman-investigator` | standard | none | context gathering and design research |
+| `caveman-final-reviewer` | capable | capable | the final whole-branch review |
 
 ## Fast Mode
 
@@ -272,9 +288,9 @@ Roles with no agent counterpart stay on the template path in both modes: the
 round-3 fix implementer (capable tier via the inline template), the
 spec-document reviewer, the plan-document reviewer, and the Brainstormer.
 
-Model selection is unchanged in fast mode — resolve the tier as always and pass
-`model:` explicitly. Effort is fixed by each agent's definition and cannot be
-raised at dispatch.
+Model selection is unchanged in fast mode — resolve each agent's tier from the
+table in Model Selection and pass `model:` explicitly. Effort is fixed by each
+agent's definition and cannot be raised at dispatch.
 
 **Review tier gate.** Each plan task carries `**Review tier:** transcription |
 judgment` (writing-plans). In fast mode, a `transcription` task skips

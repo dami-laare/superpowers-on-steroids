@@ -24,19 +24,19 @@
     "model_cheap": {
       "type": "string",
       "title": "Cheap tier model",
-      "description": "Model for mechanical, fully-specified work — single-file transcription tasks. Leave empty to let the agent judge what this harness offers.",
+      "description": "Model for mechanical, fully-specified work — single-file transcription tasks. Leave empty to let the agent judge what this harness offers. The SUPERPOWERS_MODEL_CHEAP environment variable overrides this (env wins). On Claude Code, use an Agent-tool model alias such as haiku, sonnet, or opus.",
       "default": ""
     },
     "model_standard": {
       "type": "string",
       "title": "Standard tier model",
-      "description": "Model for integration and judgment work, and the floor for reviewers. Leave empty to let the agent judge.",
+      "description": "Model for integration and judgment work, and the floor for reviewers. Leave empty to let the agent judge. The SUPERPOWERS_MODEL_STANDARD environment variable overrides this (env wins). On Claude Code, use an Agent-tool model alias such as haiku, sonnet, or opus.",
       "default": ""
     },
     "model_capable": {
       "type": "string",
       "title": "Capable tier model",
-      "description": "Model for architecture, design, and the final whole-branch review. Leave empty to let the agent judge.",
+      "description": "Model for architecture, design, and the final whole-branch review. Leave empty to let the agent judge. The SUPERPOWERS_MODEL_CAPABLE environment variable overrides this (env wins). On Claude Code, use an Agent-tool model alias such as haiku, sonnet, or opus.",
       "default": ""
     }
   }

@@ -102,7 +102,8 @@ Subagent (general-purpose):
 
 **Placeholders:**
 - `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection; scoped
-  re-reviews of small fix diffs take a cheap-to-mid tier
+  re-reviews of small fix diffs take a cheap-to-mid tier (fast mode's
+  `caveman-reviewer` re-review takes the standard tier instead)
 - `[BRIEF_FILE]` — the task brief file from `scripts/task-brief` (same file the implementer worked from)
 - `[FINDINGS]` — the Critical/Important findings and spec gaps from the
   previous review, copied verbatim, one per bullet

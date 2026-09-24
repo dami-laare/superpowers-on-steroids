@@ -1,5 +1,37 @@
 # Superpowers Release Notes
 
+## v6.6.0 (2026-09-24)
+
+### Tier config now governs which model the bundled agents run on
+
+- **Why.** The `cheap`/`standard`/`capable` tier config only asked the
+  controller to pass `model:`; an omitted `model:` silently fell back to each
+  `caveman-*` agent's pinned frontmatter model. Real transcripts showed 69
+  implementer and 83 investigator dispatches running config-blind, and 13
+  reviewers on haiku below the mid-tier floor.
+- **Tier gate (Claude Code).** New PreToolUse hook `hooks/agent-tier-gate`
+  denies a `caveman-*` Agent dispatch that omits `model:` while its tier is
+  configured, or falls below its floor (reviewer ≥ standard, final reviewer ≥
+  capable), and names the exact model to pass. Pure bash, macOS `/bin/bash`
+  3.2 compatible, fails open (registered with `|| true`), inert on every other
+  harness.
+- **Canonical tier table.** subagent-driven-development's Model Selection now
+  gives every bundled agent a tier and floor; brainstorming and
+  requesting-code-review reference it. Fast-mode re-reviews take the standard
+  tier.
+- **`SUPERPOWERS_MODEL_CHEAP/STANDARD/CAPABLE` env overrides.** A non-empty
+  value wins over the plugin option, like `SUPERPOWERS_MODE`. Shared
+  precedence lives in `hooks/lib-config`, used by both hooks.
+- **`caveman-investigator` effort high → medium.** Effort cannot be raised at
+  dispatch, and fast mode promises lower effort.
+
+### Internal
+
+- `tests/hooks/test-agent-tier-gate.sh` (41 cases incl. adversarial prompt
+  content, malformed input, 100 KB prompts, and a table↔gate wiring check);
+  `test-session-start.sh` covers env precedence; the contract test pins the
+  tier table and wording.
+
 ## v6.5.0 (2026-09-04)
 
 ### Fast Mode — fewer dispatches per task

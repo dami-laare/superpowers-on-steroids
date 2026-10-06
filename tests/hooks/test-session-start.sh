@@ -418,7 +418,7 @@ assert_command_output \
     "SUPERPOWERS_REVIEWER_MODEL wins over the plugin option" \
     "nested" \
     "reviewer: model=opus effort=medium" \
-    "model=sonnet effort=medium"$'\037'"warning:" \
+    "reviewer: model=sonnet effort=medium"$'\037'"warning:" \
     "$env_role_wins_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=sonnet \

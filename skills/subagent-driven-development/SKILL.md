@@ -58,7 +58,7 @@ digraph process {
         "All implementers report: implement, test, commit, self-review" [shape=box];
         "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" [shape=box];
         "Every reviewer reports spec ✅ and quality approved?" [shape=diamond];
-        "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [shape=box];
+        "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" [shape=box];
         "Re-review clean?" [shape=diamond];
         "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" [shape=box];
         "Run full test suite once for the wave" [shape=box];
@@ -78,10 +78,10 @@ digraph process {
     "Any implementer asks questions?" -> "All implementers report: implement, test, commit, self-review" [label="no"];
     "All implementers report: implement, test, commit, self-review" -> "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)";
     "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" -> "Every reviewer reports spec ✅ and quality approved?";
-    "Every reviewer reports spec ✅ and quality approved?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [label="no"];
-    "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" -> "Re-review clean?";
+    "Every reviewer reports spec ✅ and quality approved?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" [label="no"];
+    "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" -> "Re-review clean?";
     "Re-review clean?" -> "Run full test suite once for the wave" [label="yes"];
-    "Re-review clean?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [label="no, R < 3"];
+    "Re-review clean?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" [label="no, R < 3"];
     "Re-review clean?" -> "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" [label="no, R = 3"];
     "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" -> "Run full test suite once for the wave";
     "Every reviewer reports spec ✅ and quality approved?" -> "Run full test suite once for the wave" [label="yes"];
@@ -325,7 +325,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **BLOCKED:** The implementer cannot complete the task. Assess the blocker:
 1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, re-dispatch on the inline template path rather than the fast agent — its effort is pinned low and cannot be raised at dispatch.
+2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, dispatch the `high` variant of the agent (for example `superpowers-on-steroids:caveman-implementer-high`) on a more capable model; the inline template path remains available if the brief needs rewording.
 3. If the task is too large, break it into smaller pieces
 4. If the plan itself is wrong, escalate to the human
 

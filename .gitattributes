@@ -2,7 +2,7 @@
 *.sh text eol=lf
 hooks/session-start text eol=lf
 hooks/lib-config text eol=lf
-hooks/agent-tier-gate text eol=lf
+hooks/agent-config-gate text eol=lf
 
 # Ensure the polyglot wrapper keeps LF (it's parsed by both cmd and bash)
 *.cmd text eol=lf

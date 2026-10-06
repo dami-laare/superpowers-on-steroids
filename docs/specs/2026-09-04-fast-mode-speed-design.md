@@ -1,3 +1,5 @@
+> **Partly superseded (2026-10-06).** Bare `caveman-<role>` agents and the `model_capable` tier field were replaced by per-role model + effort config and `caveman-<role>-<effort>` variants; see `2026-10-06-per-role-agent-config-design.md`. Kept for history.
+
 # Fast Mode Speed: Fewer Dispatches Per Task
 
 **Date:** 2026-09-04

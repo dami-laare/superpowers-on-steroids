@@ -16,8 +16,10 @@ ROLES="implementer reviewer investigator final-reviewer"
 EFFORTS="low medium high"
 
 mkdir -p "$OUT"
-for stale in "$OUT"/caveman-*.md; do
-    [ -e "$stale" ] && rm -f "$stale"
+# Only sweep files this generator owns: a hand-written caveman-*.md for
+# another role survives.
+for role in $ROLES; do
+    rm -f "$OUT/caveman-$role.md" "$OUT"/caveman-"$role"-*.md
 done
 
 for role in $ROLES; do

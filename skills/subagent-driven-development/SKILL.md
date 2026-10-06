@@ -243,7 +243,7 @@ overall, so do not stretch `mechanical=` to cover judgment work.
 
 **Reviewer, investigator, final reviewer** each run on their own configured
 model. The final whole-branch review runs on `final-reviewer: model=` — the
-most capable model configured — never the session default. The round-3 fix
+intended to be the most capable model configured — never the session default. The round-3 fix
 escalation in the Fix Loop also runs on `final-reviewer: model=`.
 
 **Always specify the model explicitly when dispatching a subagent.** An
@@ -325,7 +325,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **BLOCKED:** The implementer cannot complete the task. Assess the blocker:
 1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, dispatch the `high` variant of the agent (for example `superpowers-on-steroids:caveman-implementer-high`) on a more capable model; the inline template path remains available if the brief needs rewording.
+2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, dispatch the `high` variant of the agent (for example `superpowers-on-steroids:caveman-implementer-high`) on `final-reviewer: model=` — the only pair the gate allows for that variant; the inline template path remains available if the brief needs rewording.
 3. If the task is too large, break it into smaller pieces
 4. If the plan itself is wrong, escalate to the human
 

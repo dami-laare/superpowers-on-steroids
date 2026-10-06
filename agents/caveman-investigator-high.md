@@ -1,9 +1,9 @@
 ---
-name: caveman-investigator
-description: Read-only codebase investigation and design research. Use to inventory what exists, trace a mechanism, verify a claim against source, or gather ground truth before planning. Returns findings only, never edits. Caveman-compressed so the controller's context stays small.
+name: caveman-investigator-high
+description: Read-only codebase investigation and design research. Use to inventory what exists, trace a mechanism, verify a claim against source, or gather ground truth before planning. Returns findings only, never edits. Caveman-compressed so the controller's context stays small. Effort high variant. Dispatch only the variant named by <SUPERPOWERS_CONFIG>.
 tools: Read, Bash, Glob, Grep, WebFetch, WebSearch
 model: sonnet
-effort: medium
+effort: high
 color: cyan
 ---
 

@@ -1,9 +1,9 @@
 ---
-name: caveman-final-reviewer
-description: Senior whole-branch code review before merge. Use once, after every task in a plan has passed its own task-scoped review, to catch what per-task gates structurally cannot see — cross-task interactions, architectural drift, and defects in the plan itself. Read-only. Higher model and effort than the per-task reviewer, because this is the last gate.
+name: caveman-final-reviewer-low
+description: Senior whole-branch code review before merge. Use once, after every task in a plan has passed its own task-scoped review, to catch what per-task gates structurally cannot see — cross-task interactions, architectural drift, and defects in the plan itself. Read-only. Runs on the final reviewer model from config, because this is the last gate. Effort low variant. Dispatch only the variant named by <SUPERPOWERS_CONFIG>.
 tools: Read, Bash, Glob, Grep
 model: opus
-effort: high
+effort: low
 color: red
 ---
 

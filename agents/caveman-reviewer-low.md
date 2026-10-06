@@ -1,9 +1,9 @@
 ---
-name: caveman-reviewer
-description: Reviews one task's diff for spec compliance and code quality, returning two verdicts. Read-only. Use as the per-task gate in plan execution. Caveman-compressed report.
+name: caveman-reviewer-low
+description: Reviews one task's diff for spec compliance and code quality, returning two verdicts. Read-only. Use as the per-task gate in plan execution. Caveman-compressed report. Effort low variant. Dispatch only the variant named by <SUPERPOWERS_CONFIG>.
 tools: Read, Bash, Glob, Grep
 model: sonnet
-effort: medium
+effort: low
 color: yellow
 ---
 

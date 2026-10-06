@@ -33,6 +33,10 @@ for (const [role, agent] of Object.entries(agentOf)) {
     if (!cfg[k].description.includes(agent)) fail(`${k}.description lacks ${agent}`);
   }
 }
+for (const k of keys.filter((k) => k.endsWith("_model"))) {
+  if (JSON.stringify(cfg[k].options) !== JSON.stringify(["haiku","sonnet","opus","fable"])) fail(`${k}.options`);
+  if (!cfg[k].description.includes("Agent-tool alias")) fail(`${k}.description lacks "Agent-tool alias"`);
+}
 for (const legacy of ["model_cheap","model_standard","model_capable"]) if (legacy in cfg) fail(`legacy key ${legacy} still present`);
 if (Object.keys(cfg.mode).includes("options") === false) fail("mode has no options");
 ' "$REPO_ROOT/.claude-plugin/plugin.json"; then

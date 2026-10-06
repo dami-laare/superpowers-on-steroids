@@ -272,7 +272,7 @@ roles_home="$(make_home config-roles)"
 assert_command_output \
     "plugin options set each role's model and effort" \
     "nested" \
-    "implementer: mechanical=sonnet judgment=opus effort=high"$'\037'"reviewer: model=opus effort=low"$'\037'"investigator: model=haiku effort=high"$'\037'"final-reviewer: model=claude-opus-5-5 effort=medium" \
+    "implementer: mechanical=sonnet judgment=opus effort=high"$'\037'"reviewer: model=opus effort=low"$'\037'"investigator: model=haiku effort=high"$'\037'"final-reviewer: model=fable effort=medium" \
     "warning:" \
     "$roles_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
@@ -283,8 +283,19 @@ assert_command_output \
     CLAUDE_PLUGIN_OPTION_REVIEWER_EFFORT=low \
     CLAUDE_PLUGIN_OPTION_INVESTIGATOR_MODEL=haiku \
     CLAUDE_PLUGIN_OPTION_INVESTIGATOR_EFFORT=high \
-    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=claude-opus-5-5 \
+    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=fable \
     CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_EFFORT=medium \
+    bash "$HOOK_UNDER_TEST"
+
+alias_only_home="$(make_home config-alias-only)"
+assert_command_output \
+    "a non-alias model falls back with a warning" \
+    "nested" \
+    "reviewer: model=sonnet effort=medium"$'\037'"warning: CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL ignored: not a valid value for reviewer_model (using sonnet)" \
+    "claude-opus-5-5" \
+    "$alias_only_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=claude-opus-5-5 \
     bash "$HOOK_UNDER_TEST"
 
 bogus_home="$(make_home config-bogus-mode)"

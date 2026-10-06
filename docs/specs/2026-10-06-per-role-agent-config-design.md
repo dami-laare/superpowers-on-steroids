@@ -51,7 +51,7 @@ Replace the four tier keys with ten role keys. Layout and defaults approved verb
 | `final_reviewer_model` | Final reviewer model | string | `opus` |
 | `final_reviewer_effort` | Final reviewer effort | string, options `low\|medium\|high` | `high` |
 
-Every key ships with a **real default**, so a role is always configured. Each description states: (a) the fast-mode agent it drives (`caveman-<role>-*`), (b) the standard-mode inline template it drives, (c) the env override that wins. Effort descriptions add "fast mode only" and that `modelSettings.effortLevel` / `maxEffortLevel` in `settings.json` may clamp the value. Model fields are free text (alias or full model id); `config_value`'s `[A-Za-z0-9._-]` whitelist still applies.
+Every key ships with a **real default**, so a role is always configured. Each description states: (a) the fast-mode agent it drives (`caveman-<role>-*`), (b) the standard-mode inline template it drives, (c) the env override that wins. Effort descriptions add "fast mode only" and that `modelSettings.effortLevel` / `maxEffortLevel` in `settings.json` may clamp the value. Model fields are dropdowns over the Agent-tool aliases `haiku|sonnet|opus|fable` (the only values the Claude Code Agent tool accepts); the resolver rejects anything else with a warning; `config_value`'s `[A-Za-z0-9._-]` whitelist still applies.
 
 Env overrides (win over plugin options): `SUPERPOWERS_MODE`, `SUPERPOWERS_IMPLEMENTER_MECHANICAL_MODEL`, `SUPERPOWERS_IMPLEMENTER_JUDGMENT_MODEL`, `SUPERPOWERS_IMPLEMENTER_EFFORT`, `SUPERPOWERS_REVIEWER_MODEL`, `SUPERPOWERS_REVIEWER_EFFORT`, `SUPERPOWERS_INVESTIGATOR_MODEL`, `SUPERPOWERS_INVESTIGATOR_EFFORT`, `SUPERPOWERS_FINAL_REVIEWER_MODEL`, `SUPERPOWERS_FINAL_REVIEWER_EFFORT`.
 
@@ -61,7 +61,7 @@ Env overrides (win over plugin options): `SUPERPOWERS_MODE`, `SUPERPOWERS_IMPLEM
 - `SP_ROLES="implementer reviewer investigator final-reviewer"`.
 - Builtin defaults in one `case` table; values equal the plugin.json defaults (enforced by the wiring test).
 - `sp_resolve_mode` prints `fast` or `standard`, never empty.
-- `sp_role_model ROLE [mechanical|judgment]` — env → plugin option → builtin. Whitelist runs on each source; a rejected value falls through and records a warning.
+- `sp_role_model ROLE [mechanical|judgment]` — env → plugin option → builtin. Whitelist runs on each source; a rejected value falls through and records a warning; value must be one of `haiku|sonnet|opus|fable`, else fall through + warning.
 - `sp_role_effort ROLE` — same order; value must be one of `low|medium|high`, else fall through + warning.
 - `sp_config_warnings` — one line per rejected value, plus one line per legacy variable present (`SUPERPOWERS_MODEL_CHEAP|STANDARD|CAPABLE`, `CLAUDE_PLUGIN_OPTION_MODEL_CHEAP|STANDARD|CAPABLE`): `"<VAR> ignored since 7.0 — use SUPERPOWERS_<ROLE>_MODEL; see release notes"`. No mapping code.
 - Delete `sp_resolve_tier`.

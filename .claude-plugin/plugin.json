@@ -28,13 +28,25 @@
     "implementer_mechanical_model": {
       "type": "string",
       "title": "Implementer model (mechanical)",
-      "description": "Model for implementation tasks whose brief carries the complete code, or single-file fixes. Drives caveman-implementer-<effort> in fast mode and the inline implementer template in standard mode. Claude Code alias (haiku, sonnet, opus) or a full model id. Env override: SUPERPOWERS_IMPLEMENTER_MECHANICAL_MODEL (env wins).",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for implementation tasks whose brief carries the complete code, or single-file fixes. Drives caveman-implementer-<effort> in fast mode and the inline implementer template in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_IMPLEMENTER_MECHANICAL_MODEL (env wins).",
       "default": "haiku"
     },
     "implementer_judgment_model": {
       "type": "string",
       "title": "Implementer model (judgment)",
-      "description": "Model for integration work, multi-file coordination, and prose briefs. Drives caveman-implementer-<effort> in fast mode and the inline implementer template in standard mode. Claude Code alias or full model id. Env override: SUPERPOWERS_IMPLEMENTER_JUDGMENT_MODEL (env wins).",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for integration work, multi-file coordination, and prose briefs. Drives caveman-implementer-<effort> in fast mode and the inline implementer template in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_IMPLEMENTER_JUDGMENT_MODEL (env wins).",
       "default": "sonnet"
     },
     "implementer_effort": {
@@ -51,7 +63,13 @@
     "reviewer_model": {
       "type": "string",
       "title": "Reviewer model",
-      "description": "Model for every per-task review and re-review. Drives caveman-reviewer-<effort> in fast mode and the inline task-reviewer / re-review templates in standard mode. Claude Code alias or full model id. Env override: SUPERPOWERS_REVIEWER_MODEL (env wins).",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for every per-task review and re-review. Drives caveman-reviewer-<effort> in fast mode and the inline task-reviewer / re-review templates in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_REVIEWER_MODEL (env wins).",
       "default": "sonnet"
     },
     "reviewer_effort": {
@@ -68,7 +86,13 @@
     "investigator_model": {
       "type": "string",
       "title": "Investigator model",
-      "description": "Model for context gathering and design research. Drives caveman-investigator-<effort> in fast mode; standard mode explores inline. Claude Code alias or full model id. Env override: SUPERPOWERS_INVESTIGATOR_MODEL (env wins).",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for context gathering and design research. Drives caveman-investigator-<effort> in fast mode; standard mode explores inline. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_INVESTIGATOR_MODEL (env wins).",
       "default": "sonnet"
     },
     "investigator_effort": {
@@ -85,7 +109,13 @@
     "final_reviewer_model": {
       "type": "string",
       "title": "Final reviewer model",
-      "description": "Model for the final whole-branch review and for round-3 fix escalation. Drives caveman-final-reviewer-<effort> in fast mode and the inline code-reviewer template in standard mode. Claude Code alias or full model id. Env override: SUPERPOWERS_FINAL_REVIEWER_MODEL (env wins).",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for the final whole-branch review and for round-3 fix escalation. Drives caveman-final-reviewer-<effort> in fast mode and the inline code-reviewer template in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_FINAL_REVIEWER_MODEL (env wins).",
       "default": "opus"
     },
     "final_reviewer_effort": {

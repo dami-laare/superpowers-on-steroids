@@ -15,7 +15,9 @@ config_value() {
     esac
 }
 
+# shellcheck disable=SC2034  # SP_ROLES/SP_EFFORTS are read by tests/hooks/test-config-wiring.sh
 SP_ROLES="implementer reviewer investigator final-reviewer"
+# shellcheck disable=SC2034  # SP_ROLES/SP_EFFORTS are read by tests/hooks/test-config-wiring.sh
 SP_EFFORTS="low medium high"
 SP_KEYS="mode implementer_mechanical_model implementer_judgment_model implementer_effort reviewer_model reviewer_effort investigator_model investigator_effort final_reviewer_model final_reviewer_effort"
 
@@ -49,6 +51,7 @@ sp_accept() {
     case "$key" in
         mode) case "$val" in standard|fast) printf '%s' "$val" ;; esac ;;
         *_effort) case "$val" in low|medium|high) printf '%s' "$val" ;; esac ;;
+        *_model) case "$val" in haiku|sonnet|opus|fable) printf '%s' "$val" ;; esac ;;
         *) printf '%s' "$val" ;;
     esac
 }

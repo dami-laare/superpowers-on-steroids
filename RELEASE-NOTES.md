@@ -8,7 +8,10 @@
   bundled agent they drove, and effort was not configurable at all. Config is
   now keyed by role: implementer (mechanical model, judgment model, effort),
   reviewer, investigator, and final reviewer (model + effort each). Every
-  field ships with a real default, so a role is always configured.
+  field ships with a real default, so a role is always configured. Model
+  fields are dropdowns over the Agent-tool aliases (`haiku`, `sonnet`,
+  `opus`, `fable`) — the only values the Agent tool accepts; anything else
+  falls back with a warning.
 - **Effort variants.** Claude Code honours `effort:` only in an agent's
   frontmatter, so each bundled agent now ships as three files:
   `caveman-<role>-low|medium|high`. Skills dispatch the variant named by
@@ -32,6 +35,8 @@
   `SUPERPOWERS_<ROLE>_MODEL` / `SUPERPOWERS_<ROLE>_EFFORT` with ROLE one of
   `IMPLEMENTER_MECHANICAL` (model only), `IMPLEMENTER_JUDGMENT` (model only),
   `IMPLEMENTER` (effort only), `REVIEWER`, `INVESTIGATOR`, `FINAL_REVIEWER`.
+  If a removed key still appears in your `~/.claude/settings.json` plugin
+  config, delete it there to silence the warning.
 - **Harness note.** `modelSettings.effortLevel` / `maxEffortLevel` in
   `settings.json` may clamp the configured effort. Model names are Claude
   Code aliases; other harnesses map them to the closest model they offer.

@@ -125,8 +125,11 @@ expect_deny "SUPERPOWERS_* env wins over the plugin option" 'caveman-reviewer-me
     "$(payload "$P:caveman-reviewer-medium" sonnet "review it")" "$ROOT" \
     CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=sonnet SUPERPOWERS_REVIEWER_MODEL=opus
 expect_allow "escalation pair follows the final reviewer model" \
-    "$(payload "$P:caveman-implementer-high" claude-opus-5-5 "fix")" "$ROOT" \
-    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=claude-opus-5-5
+    "$(payload "$P:caveman-implementer-high" fable "fix")" "$ROOT" \
+    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=fable
+expect_deny "a non-alias configured model falls back to the default alias" 'caveman-reviewer-medium + model "sonnet"' \
+    "$(payload "$P:caveman-reviewer-medium" claude-opus-5-5 "review it")" "$ROOT" \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=claude-opus-5-5
 expect_deny "escalation pair is always effort high" 'caveman-implementer-high + model "opus" (round-3 escalation)' \
     "$(payload "$P:caveman-implementer-medium" opus "fix")" "$ROOT" \
     CLAUDE_PLUGIN_OPTION_IMPLEMENTER_EFFORT=medium

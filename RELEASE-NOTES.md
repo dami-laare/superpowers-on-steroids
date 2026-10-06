@@ -1,5 +1,41 @@
 # Superpowers Release Notes
 
+## v7.0.0 (2026-10-06)
+
+### Per-role model and effort config replaces the tier fields (BREAKING)
+
+- **Why.** The `Cheap/Standard/Capable tier model` fields never said which
+  bundled agent they drove, and effort was not configurable at all. Config is
+  now keyed by role: implementer (mechanical model, judgment model, effort),
+  reviewer, investigator, and final reviewer (model + effort each). Every
+  field ships with a real default, so a role is always configured.
+- **Effort variants.** Claude Code honours `effort:` only in an agent's
+  frontmatter, so each bundled agent now ships as three files:
+  `caveman-<role>-low|medium|high`. Skills dispatch the variant named by
+  `<SUPERPOWERS_CONFIG>`. Templates live in `scripts/agent-templates/`;
+  `scripts/gen-agent-variants` regenerates `agents/` and a test keeps them in
+  sync. Bare `caveman-<role>` agents are gone.
+- **Config gate.** `hooks/agent-tier-gate` is now `hooks/agent-config-gate`:
+  a `caveman-*` dispatch must name the configured effort variant and pass the
+  configured `model:`; otherwise it is denied with the exact dispatch to make.
+  Floors and rank tables are gone — an explicit choice is authoritative. The
+  implementer also accepts the round-3 escalation pair: final reviewer model
+  at effort `high`.
+- **Config block.** `<SUPERPOWERS_CONFIG>` is always emitted, in both modes,
+  one line per role. Rejected values fall back to the default with a
+  `warning:` line (also surfaced as a Claude Code `systemMessage`).
+- **Migration.** Removed: `model_cheap`, `model_standard`, `model_capable`,
+  `SUPERPOWERS_MODEL_CHEAP/STANDARD/CAPABLE`. Legacy variables are ignored
+  and warned about. Mapping: cheap → `implementer_mechanical_model`;
+  standard → `implementer_judgment_model`, `reviewer_model`,
+  `investigator_model`; capable → `final_reviewer_model`. New env overrides:
+  `SUPERPOWERS_<ROLE>_MODEL` / `SUPERPOWERS_<ROLE>_EFFORT` with ROLE one of
+  `IMPLEMENTER_MECHANICAL` (model only), `IMPLEMENTER_JUDGMENT` (model only),
+  `IMPLEMENTER` (effort only), `REVIEWER`, `INVESTIGATOR`, `FINAL_REVIEWER`.
+- **Harness note.** `modelSettings.effortLevel` / `maxEffortLevel` in
+  `settings.json` may clamp the configured effort. Model names are Claude
+  Code aliases; other harnesses map them to the closest model they offer.
+
 ## v6.6.0 (2026-09-24)
 
 ### Tier config now governs which model the bundled agents run on

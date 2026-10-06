@@ -1,7 +1,7 @@
 {
   "name": "superpowers-on-steroids",
   "description": "Fork of the Superpowers core skills library with an autonomous, agent-team brainstorming skill: a proxy agent brainstorms with subagents instead of round-tripping to the user",
-  "version": "6.6.0",
+  "version": "7.0.0",
   "homepage": "https://github.com/obra/superpowers",
   "repository": "https://github.com/obra/superpowers",
   "license": "MIT",
@@ -18,7 +18,10 @@
     "mode": {
       "type": "string",
       "title": "Execution mode",
-      "options": ["standard", "fast"],
+      "options": [
+        "standard",
+        "fast"
+      ],
       "description": "standard = inline prompt templates. fast = dispatch the bundled caveman-* agents: terser reports, configurable effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. Env override: SUPERPOWERS_MODE (env wins).",
       "default": "standard"
     },
@@ -37,7 +40,11 @@
     "implementer_effort": {
       "type": "string",
       "title": "Implementer effort",
-      "options": ["low", "medium", "high"],
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
       "description": "Reasoning effort for caveman-implementer-<effort>; fast mode only. Round-3 fix escalation always uses high. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_IMPLEMENTER_EFFORT (env wins).",
       "default": "low"
     },
@@ -50,7 +57,11 @@
     "reviewer_effort": {
       "type": "string",
       "title": "Reviewer effort",
-      "options": ["low", "medium", "high"],
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
       "description": "Reasoning effort for caveman-reviewer-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_REVIEWER_EFFORT (env wins).",
       "default": "medium"
     },
@@ -63,7 +74,11 @@
     "investigator_effort": {
       "type": "string",
       "title": "Investigator effort",
-      "options": ["low", "medium", "high"],
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
       "description": "Reasoning effort for caveman-investigator-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_INVESTIGATOR_EFFORT (env wins).",
       "default": "medium"
     },
@@ -76,7 +91,11 @@
     "final_reviewer_effort": {
       "type": "string",
       "title": "Final reviewer effort",
-      "options": ["low", "medium", "high"],
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
       "description": "Reasoning effort for caveman-final-reviewer-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_FINAL_REVIEWER_EFFORT (env wins).",
       "default": "high"
     }

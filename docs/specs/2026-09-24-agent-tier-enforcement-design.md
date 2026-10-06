@@ -1,3 +1,5 @@
+> **Superseded (2026-10-06).** Tier config and the tier gate were replaced by per-role model + effort config and `hooks/agent-config-gate`; see `2026-10-06-per-role-agent-config-design.md`. Kept for history.
+
 # Agent Tier Enforcement — Design
 
 ## Problem

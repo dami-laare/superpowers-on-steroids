@@ -58,7 +58,7 @@ digraph process {
         "All implementers report: implement, test, commit, self-review" [shape=box];
         "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" [shape=box];
         "Every reviewer reports spec ✅ and quality approved?" [shape=diamond];
-        "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [shape=box];
+        "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" [shape=box];
         "Re-review clean?" [shape=diamond];
         "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" [shape=box];
         "Run full test suite once for the wave" [shape=box];
@@ -78,10 +78,10 @@ digraph process {
     "Any implementer asks questions?" -> "All implementers report: implement, test, commit, self-review" [label="no"];
     "All implementers report: implement, test, commit, self-review" -> "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)";
     "Write path-scoped diff per task, dispatch ALL task reviewers in ONE message (./task-reviewer-prompt.md)" -> "Every reviewer reports spec ✅ and quality approved?";
-    "Every reviewer reports spec ✅ and quality approved?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [label="no"];
-    "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" -> "Re-review clean?";
+    "Every reviewer reports spec ✅ and quality approved?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" [label="no"];
+    "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" -> "Re-review clean?";
     "Re-review clean?" -> "Run full test suite once for the wave" [label="yes"];
-    "Re-review clean?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh capable-tier implementer; scoped re-review (./re-review-prompt.md)" [label="no, R < 3"];
+    "Re-review clean?" -> "Fix round R (max 3): resume implementer with findings; R3 = fresh implementer on final-reviewer's model; scoped re-review (./re-review-prompt.md)" [label="no, R < 3"];
     "Re-review clean?" -> "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" [label="no, R = 3"];
     "Round 3 tripped: open Critical → task BLOCKED; Important-only → ledger breaker-tripped, continue" -> "Run full test suite once for the wave";
     "Every reviewer reports spec ✅ and quality approved?" -> "Run full test suite once for the wave" [label="yes"];
@@ -153,27 +153,27 @@ A task's review-fix cycle is bounded at three rounds. Count rounds per task.
 **Rounds 1–2: resume.** Send the reviewer's Critical/Important findings to
 the task's original implementer via SendMessage — it still holds the task
 context and takes fewer turns than a fresh fixer re-deriving the diff. In
-fast mode that is the same `superpowers-on-steroids:caveman-implementer`
+fast mode that is the same `superpowers-on-steroids:caveman-implementer-<effort>`
 agent. If the implementer is no longer addressable, dispatch a fresh fix
-subagent on the same tier carrying the findings **and** the original brief
+subagent on the same model carrying the findings **and** the original brief
 path — never skip silently, and note the fallback in the ledger.
 
-**Round 3: escalate.** Dispatch a fresh implementer on the capable tier via
-the inline [implementer-prompt.md](implementer-prompt.md) in both modes —
-fast agents are effort-pinned and effort cannot be raised at dispatch. The
-capable tier resolves from `capable=` in the `<SUPERPOWERS_CONFIG>` tier
-models line when set, else the most capable model this harness offers.
+**Round 3: escalate.** Dispatch a fresh implementer on the final reviewer's
+model — `final-reviewer: model=` in `<SUPERPOWERS_CONFIG>`, the most capable
+model configured. In fast mode dispatch
+`superpowers-on-steroids:caveman-implementer-high` (the highest-effort
+variant) on that model; in standard mode use the inline
+[implementer-prompt.md](implementer-prompt.md).
 
 **After every round: scoped re-review.** Generate a fix package
 (`scripts/review-package FIX_BASE HEAD -- <task's files>`, where FIX_BASE is
 the head the previous review saw) and dispatch
-[re-review-prompt.md](re-review-prompt.md) on a cheap-to-mid tier — in fast
-mode, `superpowers-on-steroids:caveman-reviewer` in re-review mode on the standard tier
-(its floor; see Model Selection). The
-re-review verdicts each finding `ADDRESSED | NOT ADDRESSED` and flags new
-breakage in the fix diff only; it is not a fresh review. Before dispatching
-it, confirm the fix report names the covering tests, the command run, and
-its output.
+[re-review-prompt.md](re-review-prompt.md) on the reviewer model — in fast
+mode, `superpowers-on-steroids:caveman-reviewer-<effort>` in re-review mode
+on `reviewer: model=` (see Model Selection). The re-review verdicts each
+finding `ADDRESSED | NOT ADDRESSED` and flags new breakage in the fix diff
+only; it is not a fresh review. Before dispatching it, confirm the fix
+report names the covering tests, the command run, and its output.
 
 **Round 3 trips.** If findings remain open after the round-3 re-review:
 - Any open **Critical** → mark the task BLOCKED. Failure isolation applies:
@@ -200,71 +200,72 @@ before execution begins, not one interrupt per discovery mid-plan. If the
 scan is clean, proceed without comment. The review loop remains the net for
 conflicts that only emerge from implementation.
 
-If the session context carries a `<SUPERPOWERS_CONFIG>` block, state the
-resolved policy once, before wave 1, in one line: `Mode: fast — transcription
-tasks skip per-task review on green report evidence, judgment tasks reviewed;
-fix loop capped at 3 rounds`, or `Mode: standard — every task reviewed; fix
-loop capped at 3 rounds` when the block carries only tier models. With no
-block, say nothing.
+State the resolved policy once, before wave 1, in one line, from the
+`<SUPERPOWERS_CONFIG>` block in the session context: `Mode: fast —
+transcription tasks skip per-task review on green report evidence, judgment
+tasks reviewed; fix loop capped at 3 rounds`, or `Mode: standard — every task
+reviewed; fix loop capped at 3 rounds`. With no block at all (a harness
+without the SessionStart hook), treat the mode as standard and say so.
 
 ## Model Selection
 
-Use the least powerful model that can handle each role to conserve cost and increase speed.
+Use the least powerful model that can handle each role to conserve cost and
+increase speed. The `<SUPERPOWERS_CONFIG>` block in the session context names
+the model for every role and the effort for every fast-mode agent:
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+```
+<SUPERPOWERS_CONFIG>
+mode: fast
+implementer: mechanical=haiku judgment=sonnet effort=low
+reviewer: model=sonnet effort=medium
+investigator: model=sonnet effort=medium
+final-reviewer: model=opus effort=high
+</SUPERPOWERS_CONFIG>
+```
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+Config decides what each role *runs on*; the heuristics below decide which of
+the two implementer models a task *needs*. Model names are Claude Code
+Agent-tool aliases; on another harness, use the closest model that harness
+offers. With no block at all, use the values shown above.
 
-**Architecture and design tasks**: use the most capable available model.
-The final whole-branch review is one of these — dispatch it on the most
-capable available model, not the session default.
+**Implementer — mechanical or judgment.** When the task's plan text contains
+the complete code to write, the implementation is transcription plus
+testing: use `mechanical=`. Single-file fixes with a complete spec also take
+`mechanical=`. Multi-file coordination, integration concerns, prose briefs,
+and debugging take `judgment=`. Turn count beats token price: the cheapest
+models routinely take 2-3× the turns on multi-step work and cost more
+overall, so do not stretch `mechanical=` to cover judgment work.
 
-**Review tasks**: choose the model with the same judgment, scaled to the
-diff's size, complexity, and risk. A small mechanical diff does not need the
-most capable model; a subtle concurrency change does.
+**Task complexity signals (implementation tasks):**
+- Touches 1-2 files with a complete spec → `mechanical=`
+- Touches multiple files with integration concerns → `judgment=`
+- Requires design judgment or broad codebase understanding → `judgment=`
+
+**Reviewer, investigator, final reviewer** each run on their own configured
+model. The final whole-branch review runs on `final-reviewer: model=` — the
+intended to be the most capable model configured — never the session default. The round-3 fix
+escalation in the Fix Loop also runs on `final-reviewer: model=`.
 
 **Always specify the model explicitly when dispatching a subagent.** An
 omitted model inherits your session's model on a general-purpose subagent —
 often the most capable and most expensive — and the bundled agent's pinned
 model on a `caveman-*` agent; either way it silently defeats this section.
+On Claude Code a hook denies a `caveman-*` dispatch whose `model:` or effort
+variant does not match the block, and names the dispatch to make.
 
-**Turn count beats token price.** Wall-clock and context cost scale with how
-many turns a subagent takes, and the cheapest models routinely take 2-3× the
-turns on multi-step work — costing more overall. Use a mid-tier model as the
-floor for reviewers and for implementers working from prose descriptions.
-When the task's plan text contains the complete code to write, the
-implementation is transcription plus testing: use the cheapest tier for
-that implementer. Single-file mechanical fixes also take the cheapest tier.
-Scoped re-reviews of small fix diffs take a cheap-to-mid tier on the inline
-template; fast mode's `caveman-reviewer` re-review takes the standard tier.
-The round-3 fix escalation in the Fix Loop takes the capable tier.
+**The bundled agents are effort variants.** Every `superpowers-on-steroids:caveman-*`
+dispatch names the variant whose suffix equals the role's `effort=` and
+passes `model:` from the same line. Effort lives in each agent's definition
+and can be changed only by choosing the variant; the harness settings
+`modelSettings.effortLevel` and `maxEffortLevel` may clamp it.
 
-**Task complexity signals (implementation tasks):**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
-
-**Tier names resolve to concrete models.** If the session context carries a
-`<SUPERPOWERS_CONFIG>` block with a `tier models:` line, use its mapping —
-`cheap=`, `standard=`, and `capable=` name the model for each tier above. For
-tiers the block does not name, and when there is no block at all, judge what
-this harness offers. Config decides what each tier *is*; it never decides which
-tier a task *needs* — that stays with the heuristics above, including the
-mid-tier floor for reviewers.
-
-**The bundled agents take fixed tiers.** Every `superpowers-on-steroids:caveman-*`
-dispatch passes `model:` explicitly, resolved from the tier below. An omitted
-model falls back to the agent's pinned frontmatter model and ignores the
-configured tiers. On Claude Code a hook denies a `caveman-*` dispatch that
-omits `model:` while its tier is configured, or that falls below its floor,
-and names the model to pass.
-
-| Agent | Tier | Floor | When |
-|---|---|---|---|
-| `caveman-implementer` | cheap or standard | none | cheap when the brief carries the complete code or the fix is single-file; standard for integration and judgment |
-| `caveman-reviewer` | standard | standard | every task review, and every fast-mode re-review |
-| `caveman-investigator` | standard | none | context gathering and design research |
-| `caveman-final-reviewer` | capable | capable | the final whole-branch review |
+| Role | Fast-mode agent | Model | Effort | When |
+|---|---|---|---|---|
+| `implementer` | `caveman-implementer-<effort>` | `mechanical=` or `judgment=` | `implementer: effort=` | mechanical when the brief carries the complete code or the fix is single-file; judgment for integration and prose briefs |
+| `reviewer` | `caveman-reviewer-<effort>` | `reviewer: model=` | `reviewer: effort=` | every task review, and every fast-mode re-review |
+| `investigator` | `caveman-investigator-<effort>` | `investigator: model=` | `investigator: effort=` | context gathering and design research |
+| `final-reviewer` | `caveman-final-reviewer-<effort>` | `final-reviewer: model=` | `final-reviewer: effort=` | the final whole-branch review |
+| implementer, round 3 | `caveman-implementer-high` | `final-reviewer: model=` | `high` | fix-loop round-3 escalation |
 
 ## Fast Mode
 
@@ -273,11 +274,12 @@ dispatch the bundled agents instead of pasting the inline templates:
 
 | Role | Standard path | Fast path |
 |---|---|---|
-| Implementer | [implementer-prompt.md](implementer-prompt.md) | `superpowers-on-steroids:caveman-implementer` |
-| Task reviewer | [task-reviewer-prompt.md](task-reviewer-prompt.md) | `superpowers-on-steroids:caveman-reviewer` |
-| Final whole-branch review | [code-reviewer.md](../requesting-code-review/code-reviewer.md) | `superpowers-on-steroids:caveman-final-reviewer` |
-| Fix rounds 1–2 | resume the implementer (contract in [implementer-prompt.md](implementer-prompt.md)) | resume `superpowers-on-steroids:caveman-implementer` |
-| Re-review | [re-review-prompt.md](re-review-prompt.md) | `superpowers-on-steroids:caveman-reviewer` (re-review mode) |
+| Implementer | [implementer-prompt.md](implementer-prompt.md) | `superpowers-on-steroids:caveman-implementer-<effort>` |
+| Task reviewer | [task-reviewer-prompt.md](task-reviewer-prompt.md) | `superpowers-on-steroids:caveman-reviewer-<effort>` |
+| Final whole-branch review | [code-reviewer.md](../requesting-code-review/code-reviewer.md) | `superpowers-on-steroids:caveman-final-reviewer-<effort>` |
+| Fix rounds 1–2 | resume the implementer (contract in [implementer-prompt.md](implementer-prompt.md)) | resume `superpowers-on-steroids:caveman-implementer-<effort>` |
+| Fix round 3 | [implementer-prompt.md](implementer-prompt.md) on `final-reviewer: model=` | `superpowers-on-steroids:caveman-implementer-high` on `final-reviewer: model=` |
+| Re-review | [re-review-prompt.md](re-review-prompt.md) | `superpowers-on-steroids:caveman-reviewer-<effort>` (re-review mode) |
 
 Each agent carries its role contract in its own system prompt, so a fast
 dispatch passes only the task-specific material: the brief path, the report
@@ -286,12 +288,10 @@ constraints that bind the task. Do not paste the template body as well — that
 duplicates the contract and throws away the context saving that is the point.
 
 Roles with no agent counterpart stay on the template path in both modes: the
-round-3 fix implementer (capable tier via the inline template), the
 spec-document reviewer, the plan-document reviewer, and the Brainstormer.
 
-Model selection is unchanged in fast mode — resolve each agent's tier from the
-table in Model Selection and pass `model:` explicitly. Effort is fixed by each
-agent's definition and cannot be raised at dispatch.
+Model and effort both come from the block: resolve the role's line in Model
+Selection, name the matching variant, and pass `model:` explicitly.
 
 **Review tier gate.** Each plan task carries `**Review tier:** transcription |
 judgment` (writing-plans). In fast mode, a `transcription` task skips
@@ -325,7 +325,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **BLOCKED:** The implementer cannot complete the task. Assess the blocker:
 1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, re-dispatch on the inline template path rather than the fast agent — its effort is pinned low and cannot be raised at dispatch.
+2. If the task requires more reasoning, re-dispatch with a more capable model. In fast mode, dispatch the `high` variant of the agent (for example `superpowers-on-steroids:caveman-implementer-high`) on `final-reviewer: model=` — the only pair the gate allows for that variant; the inline template path remains available if the brief needs rewording.
 3. If the task is too large, break it into smaller pieces
 4. If the plan itself is wrong, escalate to the human
 
@@ -588,7 +588,7 @@ Done!
 **If reviewer finds issues:**
 - Fix round 1–2: resume the same implementer with the findings
 - Scoped re-review after every round (`re-review-prompt.md`); never skip it
-- Round 3: fresh implementer on the capable tier
+- Round 3: fresh implementer on `final-reviewer: model=` (fast mode: `caveman-implementer-high`)
 - Round 3 trips: open Critical → BLOCKED; Important-only → ledger
   `breaker-tripped` and continue; never a fourth round
 

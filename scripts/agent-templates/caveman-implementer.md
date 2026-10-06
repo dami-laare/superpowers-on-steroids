@@ -1,9 +1,9 @@
 ---
-name: caveman-implementer
-description: Implements one task from a written implementation plan brief. Use for mechanical, well-specified work where the brief carries the code to write. Follows TDD, commits with an explicit pathspec, and reports in caveman style to keep the controller's context small.
+name: caveman-implementer-{{EFFORT}}
+description: Implements one task from a written implementation plan brief. Use for mechanical, well-specified work where the brief carries the code to write. Follows TDD, commits with an explicit pathspec, and reports in caveman style to keep the controller's context small. Effort {{EFFORT}} variant. Dispatch only the variant named by <SUPERPOWERS_CONFIG>.
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
-effort: low
+effort: {{EFFORT}}
 color: green
 ---
 

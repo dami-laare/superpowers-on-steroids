@@ -31,13 +31,15 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 **2. Dispatch code reviewer subagent:**
 
-Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md)
+Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md](code-reviewer.md). Pass `model:` set to `final-reviewer: model=` from the `<SUPERPOWERS_CONFIG>` block.
 
 If the session context carries `<SUPERPOWERS_CONFIG>` with `mode: fast`, first run
 `scripts/review-package BASE_SHA HEAD_SHA` (from subagent-driven-development's
 directory) and note the printed path — the agent expects to read a review
-package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer` on the capable tier
-(see subagent-driven-development Model Selection) instead,
+package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer-<effort>`
+— the variant whose suffix is `final-reviewer: effort=` — with `model:` set to
+`final-reviewer: model=` from the same block (see subagent-driven-development
+Model Selection) instead,
 passing it the printed package path plus the four placeholder values below.
 
 **Placeholders:**

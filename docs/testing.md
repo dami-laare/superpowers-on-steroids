@@ -12,8 +12,8 @@ Live in `tests/`. Currently:
 - `tests/brainstorm-server/` — node test suite for the brainstorm server JS code.
 - `tests/opencode/` — bash tests for OpenCode plugin loading, bootstrap caching, and tool registration.
 - `tests/codex-plugin-sync/` — bash sync verification.
-- `tests/agents/` — bash contract test asserting the bundled `caveman-*` agents and their inline-template counterparts keep the same status tokens, git-safety rules, and severity buckets, plus agent-frontmatter validity.
-- `tests/hooks/` — bash tests for the SessionStart hook's context injection and config precedence, and for the `agent-tier-gate` PreToolUse hook.
+- `tests/agents/` — bash contract test asserting the bundled `caveman-*` agents and their inline-template counterparts keep the same status tokens, git-safety rules, and severity buckets, plus agent-frontmatter validity, plus the generator sync test (`tests/agents/test-agent-variants.sh`) that keeps `agents/caveman-*` identical to `scripts/gen-agent-variants` output.
+- `tests/hooks/` — bash tests for the SessionStart hook's context injection and config precedence, the `agent-config-gate` PreToolUse hook, the plugin.json `userConfig` shape, and the cross-file config wiring (role list, effort list, and defaults agreeing across plugin.json, `hooks/lib-config`, the agent generator, the gate, and the SDD table).
 - `tests/kimi/` — bash/Python checks for Kimi plugin manifest wiring.
 - `tests/claude-code/test-helpers.sh`, `analyze-token-usage.py` — utilities used by remaining bash tests.
 - `tests/claude-code/test-subagent-driven-development.sh` — agent-can-describe-SDD test (no drill counterpart; tests description-recall, not behavior).

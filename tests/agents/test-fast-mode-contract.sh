@@ -25,7 +25,7 @@ assert_in_both() {
 echo "Fast-mode contract tests"
 
 # --- Implementer pair: status contract the controller branches on ---
-impl_agent="$AGENTS_DIR/caveman-implementer.md"
+impl_agent="$AGENTS_DIR/caveman-implementer-low.md"
 impl_tmpl="$SDD_DIR/implementer-prompt.md"
 for token in DONE_WITH_CONCERNS NEEDS_CONTEXT BLOCKED DONE; do
     assert_in_both "implementer status" "$token" "$impl_agent" "$impl_tmpl"
@@ -37,9 +37,9 @@ for token in "git reset" "git stash" "git clean" "git checkout --" "git add ." "
 done
 
 # --- Reviewer pairs: severity buckets the review loop branches on ---
-rev_agent="$AGENTS_DIR/caveman-reviewer.md"
+rev_agent="$AGENTS_DIR/caveman-reviewer-medium.md"
 rev_tmpl="$SDD_DIR/task-reviewer-prompt.md"
-final_agent="$AGENTS_DIR/caveman-final-reviewer.md"
+final_agent="$AGENTS_DIR/caveman-final-reviewer-high.md"
 final_tmpl="$REPO_ROOT/skills/requesting-code-review/code-reviewer.md"
 for token in Critical Important Minor; do
     assert_in_both "task reviewer severity" "$token" "$rev_agent" "$rev_tmpl"
@@ -104,29 +104,31 @@ assert_in_file "review tier" "Review tier gate" "$sdd_skill"
 assert_in_file "review tier" "a \`transcription\` task skips" "$sdd_skill"
 assert_in_file "review tier" "fix loop capped at 3 rounds" "$sdd_skill"
 
-# --- Tier table: every caveman agent has a tier; dispatching skills name theirs ---
-assert_in_file "tier table" '| `caveman-implementer` | cheap or standard | none |' "$sdd_skill"
-assert_in_file "tier table" '| `caveman-reviewer` | standard | standard |' "$sdd_skill"
-assert_in_file "tier table" '| `caveman-investigator` | standard | none |' "$sdd_skill"
-assert_in_file "tier table" '| `caveman-final-reviewer` | capable | capable |' "$sdd_skill"
-assert_in_file "tier table" 'Every `superpowers-on-steroids:caveman-*`' "$sdd_skill"
-assert_in_file "re-review tier" 'in re-review mode on the standard tier' "$sdd_skill"
-assert_in_file "re-review tier" "fast mode's \`caveman-reviewer\` re-review takes the standard tier" "$sdd_skill"
-assert_in_file "re-review tier" '`caveman-reviewer` re-review takes the standard tier' "$rereview_tmpl"
-assert_in_file "investigator tier" '`superpowers-on-steroids:caveman-investigator` on the standard tier' \
+# --- Role table: every caveman agent has a role row; dispatching skills name their variant ---
+assert_in_file "role table" '| `implementer` | `caveman-implementer-<effort>` |' "$sdd_skill"
+assert_in_file "role table" '| `reviewer` | `caveman-reviewer-<effort>` |' "$sdd_skill"
+assert_in_file "role table" '| `investigator` | `caveman-investigator-<effort>` |' "$sdd_skill"
+assert_in_file "role table" '| `final-reviewer` | `caveman-final-reviewer-<effort>` |' "$sdd_skill"
+assert_in_file "role table" 'Every `superpowers-on-steroids:caveman-*`' "$sdd_skill"
+assert_in_file "round 3" '`superpowers-on-steroids:caveman-implementer-high`' "$sdd_skill"
+assert_in_file "re-review model" '`superpowers-on-steroids:caveman-reviewer-<effort>` in re-review mode' "$sdd_skill"
+assert_in_file "re-review model" '`caveman-reviewer-<effort>` re-review takes the same reviewer model' "$rereview_tmpl"
+assert_in_file "investigator dispatch" '`superpowers-on-steroids:caveman-investigator-<effort>`' \
     "$REPO_ROOT/skills/brainstorming/SKILL.md"
-assert_in_file "final reviewer tier" '`superpowers-on-steroids:caveman-final-reviewer` on the capable tier' \
+assert_in_file "final reviewer dispatch" '`superpowers-on-steroids:caveman-final-reviewer-<effort>`' \
     "$REPO_ROOT/skills/requesting-code-review/SKILL.md"
-for tier in CHEAP STANDARD CAPABLE; do
-    assert_in_file "plugin.json env override" "SUPERPOWERS_MODEL_${tier}" "$REPO_ROOT/.claude-plugin/plugin.json"
+for key in IMPLEMENTER_MECHANICAL_MODEL IMPLEMENTER_JUDGMENT_MODEL IMPLEMENTER_EFFORT \
+    REVIEWER_MODEL REVIEWER_EFFORT INVESTIGATOR_MODEL INVESTIGATOR_EFFORT \
+    FINAL_REVIEWER_MODEL FINAL_REVIEWER_EFFORT; do
+    assert_in_file "plugin.json env override" "SUPERPOWERS_${key}" "$REPO_ROOT/.claude-plugin/plugin.json"
 done
-
-# Fast mode promises lower effort, and effort cannot be raised at dispatch.
-if grep -qE '^effort: medium$' "$AGENTS_DIR/caveman-investigator.md"; then
-    pass "caveman-investigator: effort medium"
-else
-    fail "caveman-investigator: effort must be medium"
-fi
+for skill_file in "$sdd_skill" "$rereview_tmpl" "$REPO_ROOT/skills/brainstorming/SKILL.md" "$REPO_ROOT/skills/requesting-code-review/SKILL.md"; do
+    assert_not_in_file_ci "tier wording gone" "capable tier" "$skill_file"
+    assert_not_in_file_ci "tier wording gone" "standard tier" "$skill_file"
+    assert_not_in_file_ci "tier wording gone" "cheap tier" "$skill_file"
+    assert_not_in_file_ci "tier wording gone" "tier models" "$skill_file"
+done
+assert_not_in_file_ci "effort claim gone" "effort cannot be raised" "$sdd_skill"
 
 # --- Agent file validity: what the plugin loader will accept ---
 for f in "$AGENTS_DIR"/caveman-*.md; do
@@ -151,6 +153,13 @@ for f in "$AGENTS_DIR"/caveman-*.md; do
         low|medium|high|xhigh|max|*[0-9]) pass "$base: effort valid ($effort)" ;;
         *) fail "$base: invalid effort '$effort'" ;;
     esac
+
+    suffix="${base##*-}"
+    if [ "$effort" = "$suffix" ]; then
+        pass "$base: effort matches variant suffix"
+    else
+        fail "$base: effort '$effort' does not match suffix '$suffix'"
+    fi
 
     if printf '%s' "$fm" | grep -qE '^(permissionMode|hooks|mcpServers):'; then
         fail "$base: sets a key plugin agents ignore"

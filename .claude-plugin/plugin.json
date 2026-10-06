@@ -1,7 +1,7 @@
 {
   "name": "superpowers-on-steroids",
   "description": "Fork of the Superpowers core skills library with an autonomous, agent-team brainstorming skill: a proxy agent brainstorms with subagents instead of round-tripping to the user",
-  "version": "6.6.0",
+  "version": "7.0.0",
   "homepage": "https://github.com/obra/superpowers",
   "repository": "https://github.com/obra/superpowers",
   "license": "MIT",
@@ -18,26 +18,116 @@
     "mode": {
       "type": "string",
       "title": "Execution mode",
-      "description": "standard = inline prompt templates (default). fast = dispatch the bundled caveman-* agents: terser reports, lower reasoning effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. The SUPERPOWERS_MODE environment variable overrides this per session (env wins; SUPERPOWERS_MODE=standard force-disables fast).",
+      "options": [
+        "standard",
+        "fast"
+      ],
+      "description": "standard = inline prompt templates. fast = dispatch the bundled caveman-* agents: terser reports, configurable effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. Env override: SUPERPOWERS_MODE (env wins).",
       "default": "standard"
     },
-    "model_cheap": {
+    "implementer_mechanical_model": {
       "type": "string",
-      "title": "Cheap tier model",
-      "description": "Model for mechanical, fully-specified work — single-file transcription tasks. Leave empty to let the agent judge what this harness offers. The SUPERPOWERS_MODEL_CHEAP environment variable overrides this (env wins). On Claude Code, use an Agent-tool model alias such as haiku, sonnet, or opus.",
-      "default": ""
+      "title": "Implementer model (mechanical)",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for implementation tasks whose brief carries the complete code, or single-file fixes. Drives caveman-implementer-<effort> in fast mode and the inline implementer template in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_IMPLEMENTER_MECHANICAL_MODEL (env wins).",
+      "default": "haiku"
     },
-    "model_standard": {
+    "implementer_judgment_model": {
       "type": "string",
-      "title": "Standard tier model",
-      "description": "Model for integration and judgment work, and the floor for reviewers. Leave empty to let the agent judge. The SUPERPOWERS_MODEL_STANDARD environment variable overrides this (env wins). On Claude Code, use an Agent-tool model alias such as haiku, sonnet, or opus.",
-      "default": ""
+      "title": "Implementer model (judgment)",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for integration work, multi-file coordination, and prose briefs. Drives caveman-implementer-<effort> in fast mode and the inline implementer template in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_IMPLEMENTER_JUDGMENT_MODEL (env wins).",
+      "default": "sonnet"
     },
-    "model_capable": {
+    "implementer_effort": {
       "type": "string",
-      "title": "Capable tier model",
-      "description": "Model for architecture, design, and the final whole-branch review. Leave empty to let the agent judge. The SUPERPOWERS_MODEL_CAPABLE environment variable overrides this (env wins). On Claude Code, use an Agent-tool model alias such as haiku, sonnet, or opus.",
-      "default": ""
+      "title": "Implementer effort",
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Reasoning effort for caveman-implementer-<effort>; fast mode only. Round-3 fix escalation always uses high. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_IMPLEMENTER_EFFORT (env wins).",
+      "default": "low"
+    },
+    "reviewer_model": {
+      "type": "string",
+      "title": "Reviewer model",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for every per-task review and re-review. Drives caveman-reviewer-<effort> in fast mode and the inline task-reviewer / re-review templates in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_REVIEWER_MODEL (env wins).",
+      "default": "sonnet"
+    },
+    "reviewer_effort": {
+      "type": "string",
+      "title": "Reviewer effort",
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Reasoning effort for caveman-reviewer-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_REVIEWER_EFFORT (env wins).",
+      "default": "medium"
+    },
+    "investigator_model": {
+      "type": "string",
+      "title": "Investigator model",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for context gathering and design research. Drives caveman-investigator-<effort> in fast mode; standard mode explores inline. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_INVESTIGATOR_MODEL (env wins).",
+      "default": "sonnet"
+    },
+    "investigator_effort": {
+      "type": "string",
+      "title": "Investigator effort",
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Reasoning effort for caveman-investigator-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_INVESTIGATOR_EFFORT (env wins).",
+      "default": "medium"
+    },
+    "final_reviewer_model": {
+      "type": "string",
+      "title": "Final reviewer model",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for the final whole-branch review and for round-3 fix escalation. Drives caveman-final-reviewer-<effort> in fast mode and the inline code-reviewer template in standard mode. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_FINAL_REVIEWER_MODEL (env wins).",
+      "default": "opus"
+    },
+    "final_reviewer_effort": {
+      "type": "string",
+      "title": "Final reviewer effort",
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Reasoning effort for caveman-final-reviewer-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_FINAL_REVIEWER_EFFORT (env wins).",
+      "default": "high"
     }
   }
 }

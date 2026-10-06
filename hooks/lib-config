@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Shared config resolution for the superpowers hooks. Sourced, not run.
 # No set -e/-u here: each caller picks its own error policy.
+# bash 3.2 compatible: no ${var^^}, no associative arrays.
 
 # Claude Code exports userConfig options as CLAUDE_PLUGIN_OPTION_<KEY>.
 # Whitelist rather than escape: a value that cannot match this pattern
@@ -14,34 +15,98 @@ config_value() {
     esac
 }
 
-# SUPERPOWERS_MODE (env, e.g. from a project .envrc) wins over the plugin
-# option. Only "fast" prints, so SUPERPOWERS_MODE=standard force-disables.
-sp_resolve_mode() {
-    local mode
-    mode="$(config_value "${SUPERPOWERS_MODE:-${CLAUDE_PLUGIN_OPTION_MODE:-}}")"
-    if [ "$mode" = "fast" ]; then
-        printf 'fast'
-    fi
+# shellcheck disable=SC2034  # SP_ROLES/SP_EFFORTS are read by tests/hooks/test-config-wiring.sh
+SP_ROLES="implementer reviewer investigator final-reviewer"
+# shellcheck disable=SC2034  # SP_ROLES/SP_EFFORTS are read by tests/hooks/test-config-wiring.sh
+SP_EFFORTS="low medium high"
+SP_KEYS="mode implementer_mechanical_model implementer_judgment_model implementer_effort reviewer_model reviewer_effort investigator_model investigator_effort final_reviewer_model final_reviewer_effort"
+
+# Builtin defaults. Keep in step with userConfig defaults in
+# .claude-plugin/plugin.json (tests/hooks/test-config-wiring.sh checks).
+sp_default() {
+    case "$1" in
+        mode) printf standard ;;
+        implementer_mechanical_model) printf haiku ;;
+        implementer_judgment_model) printf sonnet ;;
+        implementer_effort) printf low ;;
+        reviewer_model) printf sonnet ;;
+        reviewer_effort) printf medium ;;
+        investigator_model) printf sonnet ;;
+        investigator_effort) printf medium ;;
+        final_reviewer_model) printf opus ;;
+        final_reviewer_effort) printf high ;;
+    esac
 }
 
-# Tier model for cheap|standard|capable. A non-empty SUPERPOWERS_MODEL_<TIER>
-# wins over the plugin option, same as SUPERPOWERS_MODE.
-sp_resolve_tier() {
-    local env_raw="" opt_raw=""
-    case "${1:-}" in
-        cheap)
-            env_raw="${SUPERPOWERS_MODEL_CHEAP:-}"
-            opt_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CHEAP:-}"
-            ;;
-        standard)
-            env_raw="${SUPERPOWERS_MODEL_STANDARD:-}"
-            opt_raw="${CLAUDE_PLUGIN_OPTION_MODEL_STANDARD:-}"
-            ;;
-        capable)
-            env_raw="${SUPERPOWERS_MODEL_CAPABLE:-}"
-            opt_raw="${CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE:-}"
-            ;;
-        *) return 0 ;;
+# sp_upper KEY — role_key -> ROLE_KEY (hyphens become underscores too).
+sp_upper() {
+    printf '%s' "$1" | tr 'a-z-' 'A-Z_'
+}
+
+# sp_accept KEY RAW — prints RAW when it is a usable value for KEY, else nothing.
+sp_accept() {
+    local key="$1" val
+    val="$(config_value "${2:-}")"
+    [ -n "$val" ] || return 0
+    case "$key" in
+        mode) case "$val" in standard|fast) printf '%s' "$val" ;; esac ;;
+        *_effort) case "$val" in low|medium|high) printf '%s' "$val" ;; esac ;;
+        *_model) case "$val" in haiku|sonnet|opus|fable) printf '%s' "$val" ;; esac ;;
+        *) printf '%s' "$val" ;;
     esac
-    config_value "${env_raw:-$opt_raw}"
+}
+
+# sp_setting KEY — env SUPERPOWERS_<KEY> wins over the plugin option, which
+# wins over the builtin default. Never empty: every role is always configured.
+sp_setting() {
+    local key="$1" upper env_name opt_name val
+    upper="$(sp_upper "$key")"
+    env_name="SUPERPOWERS_${upper}"
+    opt_name="CLAUDE_PLUGIN_OPTION_${upper}"
+    val="$(sp_accept "$key" "${!env_name:-}")"
+    [ -n "$val" ] || val="$(sp_accept "$key" "${!opt_name:-}")"
+    [ -n "$val" ] || val="$(sp_default "$key")"
+    printf '%s' "$val"
+}
+
+sp_resolve_mode() {
+    sp_setting mode
+}
+
+# sp_role_model ROLE [mechanical|judgment] — implementer has two models.
+sp_role_model() {
+    local role="$1" key
+    case "$role" in
+        implementer) key="implementer_${2:-judgment}_model" ;;
+        *) key="$(printf '%s' "$role" | tr - _)_model" ;;
+    esac
+    sp_setting "$key"
+}
+
+sp_role_effort() {
+    sp_setting "$(printf '%s' "$1" | tr - _)_effort"
+}
+
+# One "warning: ..." line per rejected value and per legacy tier variable.
+# Only variable names, key names, and whitelisted values are printed, so the
+# output is safe to embed in hook JSON.
+sp_config_warnings() {
+    local key upper src raw legacy
+    for key in $SP_KEYS; do
+        upper="$(sp_upper "$key")"
+        for src in "SUPERPOWERS_${upper}" "CLAUDE_PLUGIN_OPTION_${upper}"; do
+            raw="${!src:-}"
+            [ -n "$raw" ] || continue
+            if [ -z "$(sp_accept "$key" "$raw")" ]; then
+                printf 'warning: %s ignored: not a valid value for %s (using %s)\n' \
+                    "$src" "$key" "$(sp_setting "$key")"
+            fi
+        done
+    done
+    for legacy in SUPERPOWERS_MODEL_CHEAP SUPERPOWERS_MODEL_STANDARD SUPERPOWERS_MODEL_CAPABLE \
+        CLAUDE_PLUGIN_OPTION_MODEL_CHEAP CLAUDE_PLUGIN_OPTION_MODEL_STANDARD CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE; do
+        if [ -n "${!legacy:-}" ]; then
+            printf 'warning: %s ignored since 7.0 - use SUPERPOWERS_<ROLE>_MODEL; see release notes\n' "$legacy"
+        fi
+    done
 }

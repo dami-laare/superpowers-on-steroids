@@ -27,32 +27,23 @@ using_superpowers_escaped=$(escape_for_json "$using_superpowers_content")
 
 # Per-plugin config. Claude Code exports userConfig options as
 # CLAUDE_PLUGIN_OPTION_<KEY>; lib-config applies the SUPERPOWERS_* env
-# overrides and the whitelist that keeps the JSON below intact.
+# overrides, builtin defaults, and the whitelist that keeps the JSON intact.
 # shellcheck source=lib-config
 . "${SCRIPT_DIR}/lib-config"
 
-# standard is the absence of fast, so it says nothing and emits nothing.
-sp_mode="$(sp_resolve_mode)"
-
-sp_tiers=""
-for tier_name in cheap standard capable; do
-    tier_model="$(sp_resolve_tier "$tier_name")"
-    if [ -n "$tier_model" ]; then
-        sp_tiers="${sp_tiers} ${tier_name}=${tier_model}"
-    fi
+# Always emitted in full: every role is always configured.
+config_block="\n\n<SUPERPOWERS_CONFIG>\nmode: $(sp_resolve_mode)"
+config_block="${config_block}\nimplementer: mechanical=$(sp_role_model implementer mechanical) judgment=$(sp_role_model implementer judgment) effort=$(sp_role_effort implementer)"
+for role_name in reviewer investigator final-reviewer; do
+    config_block="${config_block}\n${role_name}: model=$(sp_role_model "$role_name") effort=$(sp_role_effort "$role_name")"
 done
-
-config_block=""
-if [ -n "$sp_mode" ] || [ -n "$sp_tiers" ]; then
-    config_block="\n\n<SUPERPOWERS_CONFIG>"
-    if [ -n "$sp_mode" ]; then
-        config_block="${config_block}\nmode: ${sp_mode}"
-    fi
-    if [ -n "$sp_tiers" ]; then
-        config_block="${config_block}\ntier models:${sp_tiers}"
-    fi
-    config_block="${config_block}\n</SUPERPOWERS_CONFIG>"
+sp_warnings="$(sp_config_warnings)"
+sp_warnings_escaped=""
+if [ -n "$sp_warnings" ]; then
+    sp_warnings_escaped="$(escape_for_json "$sp_warnings")"
+    config_block="${config_block}\n${sp_warnings_escaped}"
 fi
+config_block="${config_block}\n</SUPERPOWERS_CONFIG>"
 
 session_context="<EXTREMELY_IMPORTANT>\nYou have superpowers.\n\n**Below is the full content of your 'superpowers-on-steroids:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool with the 'superpowers-on-steroids:' prefix:**\n\n${using_superpowers_escaped}\n</EXTREMELY_IMPORTANT>${config_block}"
 
@@ -69,8 +60,13 @@ if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   # Cursor sets CURSOR_PLUGIN_ROOT (may also set CLAUDE_PLUGIN_ROOT)
   printf '{\n  "additional_context": "%s"\n}\n' "$session_context" | cat
 elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
-  # Claude Code sets CLAUDE_PLUGIN_ROOT without COPILOT_CLI
-  printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
+  # Claude Code sets CLAUDE_PLUGIN_ROOT without COPILOT_CLI. systemMessage is
+  # shown to your human partner; only emit it when there is something to say.
+  if [ -n "$sp_warnings_escaped" ]; then
+    printf '{\n  "systemMessage": "superpowers config: %s",\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$sp_warnings_escaped" "$session_context" | cat
+  else
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
+  fi
 else
   # Copilot CLI (sets COPILOT_CLI=1) or unknown platform — SDK standard format
   printf '{\n  "additionalContext": "%s"\n}\n' "$session_context" | cat

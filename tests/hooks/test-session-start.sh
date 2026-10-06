@@ -119,9 +119,13 @@ if (typeof context !== "string" || context.trim() === "") {
   fail("injected context was empty");
 }
 
-const expectedText = process.env.EXPECT_CONTAINS || "";
-if (expectedText && !context.includes(expectedText)) {
-  fail(`context did not contain expected text: ${expectedText}`);
+const expectedTexts = (process.env.EXPECT_CONTAINS || "")
+  .split("\u001f")
+  .filter(Boolean);
+for (const expectedText of expectedTexts) {
+  if (!context.includes(expectedText)) {
+    fail(`context did not contain expected text: ${expectedText}`);
+  }
 }
 
 const forbiddenTexts = (process.env.EXPECT_NOT_CONTAINS || "")
@@ -219,76 +223,120 @@ assert_command_output \
 
 # --- Per-plugin config (userConfig -> CLAUDE_PLUGIN_OPTION_* -> context) ---
 
-# Default configuration must not perturb the injected context at all: the
-# eval baseline depends on this output staying byte-identical.
+defaults_block="<SUPERPOWERS_CONFIG>"$'\n'"mode: standard"$'\n'"implementer: mechanical=haiku judgment=sonnet effort=low"$'\n'"reviewer: model=sonnet effort=medium"$'\n'"investigator: model=sonnet effort=medium"$'\n'"final-reviewer: model=opus effort=high"$'\n'"</SUPERPOWERS_CONFIG>"
+
+# Default configuration and no configuration must be byte-identical: the
+# plugin UI's defaults are the builtin defaults.
 baseline_home="$(make_home config-baseline)"
 unconfigured="$(env -i PATH="${PATH:-}" HOME="$baseline_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK_UNDER_TEST")"
 default_configured="$(env -i PATH="${PATH:-}" HOME="$baseline_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_OPTION_MODE=standard \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_MECHANICAL_MODEL=haiku \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_JUDGMENT_MODEL=sonnet \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_EFFORT=low \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=sonnet \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_EFFORT=medium \
+    CLAUDE_PLUGIN_OPTION_INVESTIGATOR_MODEL=sonnet \
+    CLAUDE_PLUGIN_OPTION_INVESTIGATOR_EFFORT=medium \
+    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=opus \
+    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_EFFORT=high \
     bash "$HOOK_UNDER_TEST")"
 if [[ "$unconfigured" == "$default_configured" ]]; then
-    pass "mode=standard emits byte-identical output to no config"
+    pass "explicit defaults emit byte-identical output to no config"
 else
-    fail "mode=standard emits byte-identical output to no config"
+    fail "explicit defaults emit byte-identical output to no config"
 fi
 
-if printf '%s' "$unconfigured" | grep -q "SUPERPOWERS_CONFIG"; then
-    fail "unconfigured hook omits the config block"
-else
-    pass "unconfigured hook omits the config block"
-fi
+assert_command_output \
+    "unconfigured hook emits the full defaults block" \
+    "nested" \
+    "$defaults_block" \
+    "warning:" \
+    "$baseline_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
 
 fast_home="$(make_home config-fast)"
 assert_command_output \
-    "mode=fast emits the config block" \
+    "mode=fast emits mode: fast with every role line" \
     "nested" \
-    "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast"$'\n'"implementer: mechanical=haiku"$'\037'"final-reviewer: model=opus effort=high" \
     "" \
     "$fast_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
     bash "$HOOK_UNDER_TEST"
 
-tiers_home="$(make_home config-tiers)"
+roles_home="$(make_home config-roles)"
 assert_command_output \
-    "tier models line lists only the tiers that are set, in fixed order" \
+    "plugin options set each role's model and effort" \
     "nested" \
-    "tier models: cheap=haiku capable=opus" \
-    "" \
-    "$tiers_home" \
+    "implementer: mechanical=sonnet judgment=opus effort=high"$'\037'"reviewer: model=opus effort=low"$'\037'"investigator: model=haiku effort=high"$'\037'"final-reviewer: model=claude-opus-5-5 effort=medium" \
+    "warning:" \
+    "$roles_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    CLAUDE_PLUGIN_OPTION_MODEL_CHEAP=haiku \
-    CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE=opus \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_MECHANICAL_MODEL=sonnet \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_JUDGMENT_MODEL=opus \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_EFFORT=high \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=opus \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_EFFORT=low \
+    CLAUDE_PLUGIN_OPTION_INVESTIGATOR_MODEL=haiku \
+    CLAUDE_PLUGIN_OPTION_INVESTIGATOR_EFFORT=high \
+    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=claude-opus-5-5 \
+    CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_EFFORT=medium \
     bash "$HOOK_UNDER_TEST"
 
 bogus_home="$(make_home config-bogus-mode)"
 assert_command_output \
-    "unrecognised mode falls back to standard (no block)" \
+    "unrecognised mode falls back to standard with a warning" \
     "nested" \
-    "" \
-    "SUPERPOWERS_CONFIG" \
+    "mode: standard"$'\037'"warning: CLAUDE_PLUGIN_OPTION_MODE ignored: not a valid value for mode (using standard)" \
+    "mode: turbo" \
     "$bogus_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_MODE=turbo \
     bash "$HOOK_UNDER_TEST"
 
+bogus_effort_home="$(make_home config-bogus-effort)"
+assert_command_output \
+    "an effort outside low|medium|high falls back with a warning" \
+    "nested" \
+    "reviewer: model=sonnet effort=medium"$'\037'"warning: CLAUDE_PLUGIN_OPTION_REVIEWER_EFFORT ignored: not a valid value for reviewer_effort (using medium)" \
+    "effort=xhigh" \
+    "$bogus_effort_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_EFFORT=xhigh \
+    bash "$HOOK_UNDER_TEST"
+
 inject_home="$(make_home config-injection)"
 assert_command_output \
-    "values failing the whitelist are dropped and JSON stays valid" \
+    "values failing the whitelist are dropped, warned, and JSON stays valid" \
     "nested" \
-    "" \
-    "SUPERPOWERS_CONFIG"$'\037'"\$(id)" \
+    "implementer: mechanical=haiku"$'\037'"warning: CLAUDE_PLUGIN_OPTION_IMPLEMENTER_MECHANICAL_MODEL ignored" \
+    "\$(id)" \
     "$inject_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    CLAUDE_PLUGIN_OPTION_MODEL_CHEAP='he" + $(id) + "llo' \
+    CLAUDE_PLUGIN_OPTION_IMPLEMENTER_MECHANICAL_MODEL='he" + $(id) + "llo' \
+    bash "$HOOK_UNDER_TEST"
+
+legacy_tier_home="$(make_home config-legacy-tier)"
+assert_command_output \
+    "legacy tier variables are ignored with a warning" \
+    "nested" \
+    "reviewer: model=sonnet"$'\037'"warning: SUPERPOWERS_MODEL_STANDARD ignored since 7.0 - use SUPERPOWERS_<ROLE>_MODEL; see release notes"$'\037'"warning: CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE ignored since 7.0" \
+    "" \
+    "$legacy_tier_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    SUPERPOWERS_MODEL_STANDARD=opus \
+    CLAUDE_PLUGIN_OPTION_MODEL_CAPABLE=opus \
     bash "$HOOK_UNDER_TEST"
 
 copilot_config_home="$(make_home config-copilot)"
 assert_command_output \
     "config block also reaches the Copilot CLI output shape" \
     "sdk" \
-    "mode: fast" \
+    "mode: fast"$'\037'"final-reviewer: model=opus effort=high" \
     "" \
     "$copilot_config_home" \
     COPILOT_CLI=1 \
@@ -300,7 +348,7 @@ cursor_config_home="$(make_home config-cursor)"
 assert_command_output \
     "config block also reaches the Cursor output shape" \
     "cursor" \
-    "mode: fast" \
+    "mode: fast"$'\037'"final-reviewer: model=opus effort=high" \
     "" \
     "$cursor_config_home" \
     CURSOR_PLUGIN_ROOT="$REPO_ROOT" \
@@ -308,10 +356,10 @@ assert_command_output \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
     bash "$HOOK_UNDER_TEST"
 
-# --- SUPERPOWERS_MODE env override (per-project opt-in; env wins) ---
+# --- SUPERPOWERS_* env overrides (env wins over the plugin option) ---
 env_fast_home="$(make_home config-env-fast)"
 assert_command_output \
-    "SUPERPOWERS_MODE=fast alone emits the config block" \
+    "SUPERPOWERS_MODE=fast alone sets mode: fast" \
     "nested" \
     "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast" \
     "" \
@@ -324,8 +372,8 @@ env_override_home="$(make_home config-env-override)"
 assert_command_output \
     "SUPERPOWERS_MODE=standard force-disables a fast plugin option" \
     "nested" \
-    "" \
-    "SUPERPOWERS_CONFIG" \
+    "mode: standard" \
+    "mode: fast" \
     "$env_override_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
@@ -334,10 +382,10 @@ assert_command_output \
 
 env_bogus_home="$(make_home config-env-bogus)"
 assert_command_output \
-    "SUPERPOWERS_MODE failing the whitelist is dropped and does not fall back to the plugin option (no block)" \
+    "SUPERPOWERS_MODE failing the whitelist is warned and the plugin option applies" \
     "nested" \
-    "" \
-    "SUPERPOWERS_CONFIG" \
+    "mode: fast"$'\037'"warning: SUPERPOWERS_MODE ignored: not a valid value for mode (using fast)" \
+    "\$(id)" \
     "$env_bogus_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
@@ -349,7 +397,7 @@ assert_command_output \
     "empty SUPERPOWERS_MODE defers to the plugin option" \
     "nested" \
     "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast" \
-    "" \
+    "warning:" \
     "$env_unset_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
@@ -365,55 +413,78 @@ else
     fail "empty SUPERPOWERS_MODE alone emits byte-identical output to no config"
 fi
 
-# --- SUPERPOWERS_MODEL_* env override (env wins, like SUPERPOWERS_MODE) ---
-env_tiers_home="$(make_home config-env-tiers)"
+env_role_wins_home="$(make_home config-env-role-wins)"
 assert_command_output \
-    "SUPERPOWERS_MODEL_* alone emits the tier models line" \
+    "SUPERPOWERS_REVIEWER_MODEL wins over the plugin option" \
     "nested" \
-    "tier models: cheap=haiku standard=sonnet capable=opus" \
-    "" \
-    "$env_tiers_home" \
+    "reviewer: model=opus effort=medium" \
+    "model=sonnet effort=medium"$'\037'"warning:" \
+    "$env_role_wins_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    SUPERPOWERS_MODEL_CHEAP=haiku \
-    SUPERPOWERS_MODEL_STANDARD=sonnet \
-    SUPERPOWERS_MODEL_CAPABLE=opus \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=sonnet \
+    SUPERPOWERS_REVIEWER_MODEL=opus \
     bash "$HOOK_UNDER_TEST"
 
-env_tier_wins_home="$(make_home config-env-tier-wins)"
+env_role_effort_home="$(make_home config-env-role-effort)"
 assert_command_output \
-    "SUPERPOWERS_MODEL_STANDARD wins over the plugin option" \
+    "SUPERPOWERS_FINAL_REVIEWER_EFFORT and SUPERPOWERS_IMPLEMENTER_MECHANICAL_MODEL apply" \
     "nested" \
-    "tier models: standard=opus" \
-    "standard=sonnet" \
-    "$env_tier_wins_home" \
+    "implementer: mechanical=sonnet judgment=sonnet effort=low"$'\037'"final-reviewer: model=opus effort=medium" \
+    "warning:" \
+    "$env_role_effort_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    CLAUDE_PLUGIN_OPTION_MODEL_STANDARD=sonnet \
-    SUPERPOWERS_MODEL_STANDARD=opus \
+    SUPERPOWERS_FINAL_REVIEWER_EFFORT=medium \
+    SUPERPOWERS_IMPLEMENTER_MECHANICAL_MODEL=sonnet \
     bash "$HOOK_UNDER_TEST"
 
-env_tier_empty_home="$(make_home config-env-tier-empty)"
+env_role_empty_home="$(make_home config-env-role-empty)"
 assert_command_output \
-    "empty SUPERPOWERS_MODEL_STANDARD defers to the plugin option" \
+    "empty SUPERPOWERS_REVIEWER_MODEL defers to the plugin option" \
     "nested" \
-    "tier models: standard=sonnet" \
-    "" \
-    "$env_tier_empty_home" \
+    "reviewer: model=opus effort=medium" \
+    "warning:" \
+    "$env_role_empty_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    CLAUDE_PLUGIN_OPTION_MODEL_STANDARD=sonnet \
-    SUPERPOWERS_MODEL_STANDARD= \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=opus \
+    SUPERPOWERS_REVIEWER_MODEL= \
     bash "$HOOK_UNDER_TEST"
 
-env_tier_bogus_home="$(make_home config-env-tier-bogus)"
+env_role_bogus_home="$(make_home config-env-role-bogus)"
 assert_command_output \
-    "SUPERPOWERS_MODEL_* failing the whitelist is dropped without falling back" \
+    "SUPERPOWERS_REVIEWER_MODEL failing the whitelist is warned and the plugin option applies" \
     "nested" \
-    "" \
-    "SUPERPOWERS_CONFIG"$'\037'"x/y" \
-    "$env_tier_bogus_home" \
+    "reviewer: model=opus effort=medium"$'\037'"warning: SUPERPOWERS_REVIEWER_MODEL ignored: not a valid value for reviewer_model (using opus)" \
+    "x/y" \
+    "$env_role_bogus_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    CLAUDE_PLUGIN_OPTION_MODEL_STANDARD=sonnet \
-    SUPERPOWERS_MODEL_STANDARD='x/y' \
+    CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=opus \
+    SUPERPOWERS_REVIEWER_MODEL='x/y' \
     bash "$HOOK_UNDER_TEST"
+
+# --- systemMessage: warnings also surface to your human partner on Claude Code ---
+sysmsg_home="$(make_home config-sysmsg)"
+sysmsg_output="$(env -i PATH="${PATH:-}" HOME="$sysmsg_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" SUPERPOWERS_MODEL_CHEAP=haiku bash "$HOOK_UNDER_TEST")"
+if printf '%s' "$sysmsg_output" | node -e '
+const p = JSON.parse(require("fs").readFileSync(0, "utf8"));
+if (typeof p.systemMessage !== "string") process.exit(1);
+if (!p.systemMessage.includes("SUPERPOWERS_MODEL_CHEAP ignored since 7.0")) process.exit(1);
+'; then
+    pass "a warning is also emitted as top-level systemMessage"
+else
+    fail "a warning is also emitted as top-level systemMessage"
+fi
+
+nosysmsg_output="$(env -i PATH="${PATH:-}" HOME="$sysmsg_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" bash "$HOOK_UNDER_TEST")"
+if printf '%s' "$nosysmsg_output" | node -e '
+const p = JSON.parse(require("fs").readFileSync(0, "utf8"));
+if ("systemMessage" in p) process.exit(1);
+'; then
+    pass "no systemMessage without warnings"
+else
+    fail "no systemMessage without warnings"
+fi
 
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"

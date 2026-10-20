@@ -20,9 +20,10 @@
       "title": "Execution mode",
       "options": [
         "standard",
-        "fast"
+        "fast",
+        "ultra"
       ],
-      "description": "standard = inline prompt templates. fast = dispatch the bundled caveman-* agents: terser reports, configurable effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. Env override: SUPERPOWERS_MODE (env wins).",
+      "description": "standard = inline prompt templates. fast = dispatch the bundled caveman-* agents: terser reports, configurable effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. ultra (experimental) = fast plus a parallel test-writer lane: a judgment task's tests are written from the plan's contract alongside its implementation, then each task runs a test-and-fix converge loop; TDD RED evidence is dropped for those tasks. Env override: SUPERPOWERS_MODE (env wins).",
       "default": "standard"
     },
     "implementer_mechanical_model": {
@@ -128,6 +129,29 @@
       ],
       "description": "Reasoning effort for caveman-final-reviewer-<effort>; fast mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_FINAL_REVIEWER_EFFORT (env wins).",
       "default": "high"
+    },
+    "test_writer_model": {
+      "type": "string",
+      "title": "Test writer model",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus",
+        "fable"
+      ],
+      "description": "Model for writing a judgment task's tests from the plan's contract, in parallel with its implementer. Drives caveman-test-writer-<effort> in ultra mode; standard and fast mode never dispatch it. Agent-tool alias: haiku, sonnet, opus, or fable. Env override: SUPERPOWERS_TEST_WRITER_MODEL (env wins).",
+      "default": "sonnet"
+    },
+    "test_writer_effort": {
+      "type": "string",
+      "title": "Test writer effort",
+      "options": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Reasoning effort for caveman-test-writer-<effort>; ultra mode only. Harness settings modelSettings.effortLevel / maxEffortLevel may clamp this. Env override: SUPERPOWERS_TEST_WRITER_EFFORT (env wins).",
+      "default": "low"
     }
   }
 }

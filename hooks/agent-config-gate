@@ -145,11 +145,11 @@ case "$effort" in
     *) role="" ;;
 esac
 case "$role" in
-    implementer|reviewer|investigator|final-reviewer) ;;
+    implementer|reviewer|investigator|final-reviewer|test-writer) ;;
     *) role="" ;;
 esac
 # subagent is never echoed: it is prompt-controlled text.
-[ -n "$role" ] || deny "unknown caveman agent: dispatch superpowers-on-steroids:caveman-<role>-<effort> with <role> one of implementer, reviewer, investigator, final-reviewer and <effort> from <SUPERPOWERS_CONFIG>."
+[ -n "$role" ] || deny "unknown caveman agent: dispatch superpowers-on-steroids:caveman-<role>-<effort> with <role> one of implementer, reviewer, investigator, final-reviewer, test-writer and <effort> from <SUPERPOWERS_CONFIG>."
 
 cfg_effort="$(sp_role_effort "$role")"
 

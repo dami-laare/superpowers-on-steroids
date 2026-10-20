@@ -223,7 +223,7 @@ assert_command_output \
 
 # --- Per-plugin config (userConfig -> CLAUDE_PLUGIN_OPTION_* -> context) ---
 
-defaults_block="<SUPERPOWERS_CONFIG>"$'\n'"mode: standard"$'\n'"implementer: mechanical=haiku judgment=sonnet effort=low"$'\n'"reviewer: model=sonnet effort=medium"$'\n'"investigator: model=sonnet effort=medium"$'\n'"final-reviewer: model=opus effort=high"$'\n'"</SUPERPOWERS_CONFIG>"
+defaults_block="<SUPERPOWERS_CONFIG>"$'\n'"mode: standard"$'\n'"implementer: mechanical=haiku judgment=sonnet effort=low"$'\n'"reviewer: model=sonnet effort=medium"$'\n'"investigator: model=sonnet effort=medium"$'\n'"final-reviewer: model=opus effort=high"$'\n'"test-writer: model=sonnet effort=low"$'\n'"</SUPERPOWERS_CONFIG>"
 
 # Default configuration and no configuration must be byte-identical: the
 # plugin UI's defaults are the builtin defaults.
@@ -241,6 +241,8 @@ default_configured="$(env -i PATH="${PATH:-}" HOME="$baseline_home" \
     CLAUDE_PLUGIN_OPTION_INVESTIGATOR_EFFORT=medium \
     CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=opus \
     CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_EFFORT=high \
+    CLAUDE_PLUGIN_OPTION_TEST_WRITER_MODEL=sonnet \
+    CLAUDE_PLUGIN_OPTION_TEST_WRITER_EFFORT=low \
     bash "$HOOK_UNDER_TEST")"
 if [[ "$unconfigured" == "$default_configured" ]]; then
     pass "explicit defaults emit byte-identical output to no config"
@@ -268,11 +270,22 @@ assert_command_output \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
     bash "$HOOK_UNDER_TEST"
 
+ultra_home="$(make_home config-ultra)"
+assert_command_output \
+    "mode=ultra emits mode: ultra with the test-writer line" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: ultra"$'\037'"test-writer: model=sonnet effort=low" \
+    "warning:" \
+    "$ultra_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=ultra \
+    bash "$HOOK_UNDER_TEST"
+
 roles_home="$(make_home config-roles)"
 assert_command_output \
     "plugin options set each role's model and effort" \
     "nested" \
-    "implementer: mechanical=sonnet judgment=opus effort=high"$'\037'"reviewer: model=opus effort=low"$'\037'"investigator: model=haiku effort=high"$'\037'"final-reviewer: model=fable effort=medium" \
+    "implementer: mechanical=sonnet judgment=opus effort=high"$'\037'"reviewer: model=opus effort=low"$'\037'"investigator: model=haiku effort=high"$'\037'"final-reviewer: model=fable effort=medium"$'\037'"test-writer: model=haiku effort=medium" \
     "warning:" \
     "$roles_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
@@ -285,6 +298,8 @@ assert_command_output \
     CLAUDE_PLUGIN_OPTION_INVESTIGATOR_EFFORT=high \
     CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_MODEL=fable \
     CLAUDE_PLUGIN_OPTION_FINAL_REVIEWER_EFFORT=medium \
+    CLAUDE_PLUGIN_OPTION_TEST_WRITER_MODEL=haiku \
+    CLAUDE_PLUGIN_OPTION_TEST_WRITER_EFFORT=medium \
     bash "$HOOK_UNDER_TEST"
 
 alias_only_home="$(make_home config-alias-only)"
@@ -377,6 +392,18 @@ assert_command_output \
     "$env_fast_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     SUPERPOWERS_MODE=fast \
+    bash "$HOOK_UNDER_TEST"
+
+env_ultra_home="$(make_home config-env-ultra)"
+assert_command_output \
+    "SUPERPOWERS_MODE=ultra wins over a fast plugin option" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: ultra" \
+    "mode: fast" \
+    "$env_ultra_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=fast \
+    SUPERPOWERS_MODE=ultra \
     bash "$HOOK_UNDER_TEST"
 
 env_override_home="$(make_home config-env-override)"

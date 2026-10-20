@@ -16,10 +16,10 @@ config_value() {
 }
 
 # shellcheck disable=SC2034  # SP_ROLES/SP_EFFORTS are read by tests/hooks/test-config-wiring.sh
-SP_ROLES="implementer reviewer investigator final-reviewer"
+SP_ROLES="implementer reviewer investigator final-reviewer test-writer"
 # shellcheck disable=SC2034  # SP_ROLES/SP_EFFORTS are read by tests/hooks/test-config-wiring.sh
 SP_EFFORTS="low medium high"
-SP_KEYS="mode implementer_mechanical_model implementer_judgment_model implementer_effort reviewer_model reviewer_effort investigator_model investigator_effort final_reviewer_model final_reviewer_effort"
+SP_KEYS="mode implementer_mechanical_model implementer_judgment_model implementer_effort reviewer_model reviewer_effort investigator_model investigator_effort final_reviewer_model final_reviewer_effort test_writer_model test_writer_effort"
 
 # Builtin defaults. Keep in step with userConfig defaults in
 # .claude-plugin/plugin.json (tests/hooks/test-config-wiring.sh checks).
@@ -35,6 +35,8 @@ sp_default() {
         investigator_effort) printf medium ;;
         final_reviewer_model) printf opus ;;
         final_reviewer_effort) printf high ;;
+        test_writer_model) printf sonnet ;;
+        test_writer_effort) printf low ;;
     esac
 }
 
@@ -49,7 +51,7 @@ sp_accept() {
     val="$(config_value "${2:-}")"
     [ -n "$val" ] || return 0
     case "$key" in
-        mode) case "$val" in standard|fast) printf '%s' "$val" ;; esac ;;
+        mode) case "$val" in standard|fast|ultra) printf '%s' "$val" ;; esac ;;
         *_effort) case "$val" in low|medium|high) printf '%s' "$val" ;; esac ;;
         *_model) case "$val" in haiku|sonnet|opus|fable) printf '%s' "$val" ;; esac ;;
         *) printf '%s' "$val" ;;

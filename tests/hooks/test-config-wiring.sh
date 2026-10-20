@@ -46,7 +46,7 @@ gen_efforts="$(sed -n 's/^EFFORTS="\(.*\)"$/\1/p' "$GEN")"
 [ "$gen_efforts" = "$SP_EFFORTS" ] && pass "generator EFFORTS match SP_EFFORTS" || fail "generator EFFORTS '$gen_efforts' vs '$SP_EFFORTS'"
 
 # --- gate case lines name the same roles and efforts ---
-gate_roles="$(grep -E '^[[:space:]]+implementer\|reviewer\|investigator\|final-reviewer\) ;;' "$GATE" | sed -E 's/^[[:space:]]+//; s/\) ;;$//; s/\|/ /g')"
+gate_roles="$(grep -E '^[[:space:]]+implementer\|reviewer\|investigator\|final-reviewer\|test-writer\) ;;' "$GATE" | sed -E 's/^[[:space:]]+//; s/\) ;;$//; s/\|/ /g')"
 gate_efforts="$(grep -E '^[[:space:]]+low\|medium\|high\) ;;' "$GATE" | sed -E 's/^[[:space:]]+//; s/\) ;;$//; s/\|/ /g')"
 [ "$gate_roles" = "$SP_ROLES" ] && pass "gate role case matches SP_ROLES" || fail "gate role case '$gate_roles' vs '$SP_ROLES'"
 [ "$gate_efforts" = "$SP_EFFORTS" ] && pass "gate effort case matches SP_EFFORTS" || fail "gate effort case '$gate_efforts' vs '$SP_EFFORTS'"
@@ -79,7 +79,8 @@ for line in \
     "implementer: mechanical=$(sp_default implementer_mechanical_model) judgment=$(sp_default implementer_judgment_model) effort=$(sp_default implementer_effort)" \
     "reviewer: model=$(sp_default reviewer_model) effort=$(sp_default reviewer_effort)" \
     "investigator: model=$(sp_default investigator_model) effort=$(sp_default investigator_effort)" \
-    "final-reviewer: model=$(sp_default final_reviewer_model) effort=$(sp_default final_reviewer_effort)"; do
+    "final-reviewer: model=$(sp_default final_reviewer_model) effort=$(sp_default final_reviewer_effort)" \
+    "test-writer: model=$(sp_default test_writer_model) effort=$(sp_default test_writer_effort)"; do
     if printf '%s' "$emitted" | grep -qF -- "$line"; then
         pass "session-start emits '$line'"
     else

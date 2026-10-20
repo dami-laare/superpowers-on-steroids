@@ -203,8 +203,10 @@ conflicts that only emerge from implementation.
 State the resolved policy once, before wave 1, in one line, from the
 `<SUPERPOWERS_CONFIG>` block in the session context: `Mode: fast —
 transcription tasks skip per-task review on green report evidence, judgment
-tasks reviewed; fix loop capped at 3 rounds`, or `Mode: standard — every task
-reviewed; fix loop capped at 3 rounds`. With no block at all (a harness
+tasks reviewed; fix loop capped at 3 rounds`, `Mode: ultra — fast-mode rules
+plus a parallel test-writer lane on judgment tasks; per-task converge loop
+capped at 3 rounds`, or `Mode: standard — every task reviewed; fix loop capped
+at 3 rounds`. With no block at all (a harness
 without the SessionStart hook), treat the mode as standard and say so.
 
 ## Model Selection
@@ -220,6 +222,7 @@ implementer: mechanical=haiku judgment=sonnet effort=low
 reviewer: model=sonnet effort=medium
 investigator: model=sonnet effort=medium
 final-reviewer: model=opus effort=high
+test-writer: model=sonnet effort=low
 </SUPERPOWERS_CONFIG>
 ```
 
@@ -265,6 +268,7 @@ and can be changed only by choosing the variant; the harness settings
 | `reviewer` | `caveman-reviewer-<effort>` | `reviewer: model=` | `reviewer: effort=` | every task review, and every fast-mode re-review |
 | `investigator` | `caveman-investigator-<effort>` | `investigator: model=` | `investigator: effort=` | context gathering and design research |
 | `final-reviewer` | `caveman-final-reviewer-<effort>` | `final-reviewer: model=` | `final-reviewer: effort=` | the final whole-branch review |
+| `test-writer` | `caveman-test-writer-<effort>` | `test-writer: model=` | `test-writer: effort=` | ultra mode only: a judgment task's tests, written in parallel with its implementer |
 | implementer, round 3 | `caveman-implementer-high` | `final-reviewer: model=` | `high` | fix-loop round-3 escalation |
 
 ## Fast Mode
@@ -312,6 +316,35 @@ reviewer as normal — on any of:
 
 A missing or malformed field is `judgment`. Never downgrade a tier the plan
 set. Standard mode ignores the field: every task is reviewed.
+
+## Ultra Mode
+
+`mode: ultra` includes all of fast mode. Every fast-mode instruction applies to ultra too, plus the additions in this section.
+
+Ultra is experimental. It trades TDD RED evidence for wall-clock time. A judgment task's tests are written by a second agent, in parallel with its implementer, from the plan's contract, without seeing the implementation. A test that encodes a wrong API assumption costs a converge round, so the plan's Interfaces block is the bottleneck. This is a deliberate, scoped deviation from superpowers-on-steroids:test-driven-development.
+
+**Lane split.** A judgment task needs two things to run as two lanes: a **Test:** path disjoint from its Create/Modify files, and an Interfaces **Produces:** contract (the names, signatures and behaviours it produces). Both lanes go out in the wave's single dispatch message:
+
+| Lane | Agent | Dispatch carries | Touches |
+|---|---|---|---|
+| Implementer | `superpowers-on-steroids:caveman-implementer-<effort>` | brief path, report path, and the line "Tests belong to a test-writer lane: implement only." | the task's non-test files |
+| Test-writer | `superpowers-on-steroids:caveman-test-writer-<effort>` on `test-writer: model=` | brief path, its own report path | the task's Test files only |
+
+Each lane commits its own paths with an explicit pathspec, as wave-mates already do.
+
+**No lane split.** In these cases the task runs exactly as in fast mode:
+- **Transcription tasks.** The brief already carries the test and implementation code, so a second agent buys nothing. One implementer writes both and skips the RED run. It runs the tests once, after implementing.
+- **fast fallback.** A judgment task with no disjoint Test path or no Produces contract runs as one implementer with full TDD. Ledger it as `fast fallback`.
+
+**Per-task streaming.** Do not wait for the whole wave. As soon as both lanes of a task have reported:
+
+1. If the test-writer reports an assumption that contradicts the brief, resume it with the correction first. Then run that task's Test files once.
+2. **Converge loop** if anything fails: resume the implementer with the failing output and the test-writer's stated assumptions. It may fix the implementation or a test. A test edit must cite, in its report, the Interfaces line the test contradicted; an uncited test edit is rejected and the round repeats. Rounds 1–2 resume `caveman-implementer-<effort>`. Round 3 dispatches `superpowers-on-steroids:caveman-implementer-high` on `final-reviewer: model=` with the brief, both reports and the failing output. If it is still red after round 3, handle the task as BLOCKED.
+3. Once the task is green, generate its path-scoped review package and dispatch its reviewer right away (the Review tier gate still applies). Then run the normal Fix Loop.
+
+The task's wave-mates keep running meanwhile. Their file sets are disjoint and every review package is path-scoped. The wave suite (Running a wave, step 7), the final whole-branch review and verification-before-completion are unchanged.
+
+**Reviewer checklist addition.** Every ultra task-reviewer dispatch adds: "Tests assert the contract's behaviours, not the implementation's incidental output; flag tautological tests as Important."
 
 ## Handling Implementer Status
 

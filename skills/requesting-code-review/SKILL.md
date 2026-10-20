@@ -42,6 +42,8 @@ package. Then dispatch `superpowers-on-steroids:caveman-final-reviewer-<effort>`
 Model Selection) instead,
 passing it the printed package path plus the four placeholder values below.
 
+`mode: ultra` includes all of fast mode. Every fast-mode instruction applies to ultra too. In ultra, also tell the reviewer: "Tests assert the contract's behaviours, not the implementation's incidental output; flag tautological tests as Important."
+
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
 - `{PLAN_OR_REQUIREMENTS}` - What it should do

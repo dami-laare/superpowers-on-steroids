@@ -109,6 +109,7 @@ assert_in_file "role table" '| `implementer` | `caveman-implementer-<effort>` |'
 assert_in_file "role table" '| `reviewer` | `caveman-reviewer-<effort>` |' "$sdd_skill"
 assert_in_file "role table" '| `investigator` | `caveman-investigator-<effort>` |' "$sdd_skill"
 assert_in_file "role table" '| `final-reviewer` | `caveman-final-reviewer-<effort>` |' "$sdd_skill"
+assert_in_file "role table" '| `test-writer` | `caveman-test-writer-<effort>` |' "$sdd_skill"
 assert_in_file "role table" 'Every `superpowers-on-steroids:caveman-*`' "$sdd_skill"
 assert_in_file "round 3" '`superpowers-on-steroids:caveman-implementer-high`' "$sdd_skill"
 assert_in_file "re-review model" '`superpowers-on-steroids:caveman-reviewer-<effort>` in re-review mode' "$sdd_skill"
@@ -119,7 +120,7 @@ assert_in_file "final reviewer dispatch" '`superpowers-on-steroids:caveman-final
     "$REPO_ROOT/skills/requesting-code-review/SKILL.md"
 for key in IMPLEMENTER_MECHANICAL_MODEL IMPLEMENTER_JUDGMENT_MODEL IMPLEMENTER_EFFORT \
     REVIEWER_MODEL REVIEWER_EFFORT INVESTIGATOR_MODEL INVESTIGATOR_EFFORT \
-    FINAL_REVIEWER_MODEL FINAL_REVIEWER_EFFORT; do
+    FINAL_REVIEWER_MODEL FINAL_REVIEWER_EFFORT TEST_WRITER_MODEL TEST_WRITER_EFFORT; do
     assert_in_file "plugin.json env override" "SUPERPOWERS_${key}" "$REPO_ROOT/.claude-plugin/plugin.json"
 done
 for skill_file in "$sdd_skill" "$rereview_tmpl" "$REPO_ROOT/skills/brainstorming/SKILL.md" "$REPO_ROOT/skills/requesting-code-review/SKILL.md"; do
@@ -210,6 +211,32 @@ else
         done
     done
 fi
+
+# --- Ultra: superset rule in every mode-aware skill, wired to the emitted block ---
+ULTRA_RULE='`mode: ultra` includes all of fast mode. Every fast-mode instruction applies to ultra too'
+ultra_home="$(mktemp -d)"
+ultra_emitted="$(env -i PATH="${PATH:-}" HOME="$ultra_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_OPTION_MODE=ultra \
+    bash "$REPO_ROOT/hooks/session-start" 2>/dev/null)" || ultra_emitted=""
+rm -rf "$ultra_home"
+for token in "mode: ultra" "test-writer: model="; do
+    if printf '%s' "$ultra_emitted" | grep -qF -- "$token"; then
+        pass "ultra wiring: hook emits '$token'"
+    else
+        fail "ultra wiring: hook does not emit '$token'"
+    fi
+done
+for skill in subagent-driven-development requesting-code-review brainstorming writing-plans; do
+    assert_in_file "ultra superset rule" "$ULTRA_RULE" "$REPO_ROOT/skills/$skill/SKILL.md"
+done
+for token in "## Ultra Mode" "Lane split" "Transcription tasks" "fast fallback" "Converge loop" \
+    "the Interfaces line the test contradicted" '`superpowers-on-steroids:caveman-test-writer-<effort>`' \
+    "Tests belong to a test-writer lane: implement only." "flag tautological tests" "Mode: ultra —"; do
+    assert_in_file "ultra SDD" "$token" "$sdd_skill"
+done
+assert_in_file "ultra review" "flag tautological tests" "$REPO_ROOT/skills/requesting-code-review/SKILL.md"
+assert_in_file "ultra plans" "(fast fallback)" "$plans_skill"
+assert_in_file "ultra implementer" "## Test-writer lane (ultra mode)" "$AGENTS_DIR/caveman-implementer-low.md"
 
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"

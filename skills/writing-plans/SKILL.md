@@ -153,6 +153,14 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+## Ultra Mode Plans
+
+`mode: ultra` includes all of fast mode. Every fast-mode instruction applies to ultra too. Ultra execution has a separate agent write a judgment task's tests in parallel with its implementer, working only from the plan. So when the session's `<SUPERPOWERS_CONFIG>` says `mode: ultra`, every judgment task must carry:
+- a **Test:** path disjoint from its Create/Modify paths, and
+- an Interfaces **Produces:** line that states each behaviour to test (inputs, outputs, errors), not just names and types.
+
+A judgment task that cannot meet both runs as a single TDD implementer. Mark it `**Review tier:** judgment (fast fallback)`.
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
@@ -176,6 +184,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **4. Wave safety:** For every wave in the Execution Waves map, check that no two same-wave tasks share a file (Create/Modify/Test) and that no task's Depends on / Consumes points at a same-wave or later-wave task. A wave that violates either rule will corrupt parallel execution — move the offending task to a later wave.
 
 **5. Tier claims:** For every task marked `Review tier: transcription`, confirm all five criteria hold — complete code in the steps, ≤2 non-test files created or edited, no new public interface, no schema/auth/payment/concurrency touch, covering tests written out. Demote any task that fails one criterion to `judgment`. A missing field is read as `judgment` at execution time, so fill it in for every task.
+
+**6. Ultra contracts:** In `mode: ultra`, every judgment task has a disjoint Test path and a behavioural Produces line, or is marked `(fast fallback)`.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 

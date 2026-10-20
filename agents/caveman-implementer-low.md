@@ -27,6 +27,10 @@ Report in caveman style: terse, fragments fine, drop articles and filler. Keep A
 
    Fix what you find before reporting.
 
+## Test-writer lane (ultra mode)
+
+When your dispatch says the task's tests belong to a test-writer lane, implement only. Do not create or edit the brief's Test files, and do not wait for them or run them — they may not exist yet. Skip the TDD steps that write or run those tests; run any build, type or lint check the brief names instead. The controller runs the tests once both lanes finish and may resume you with failures. Fix the implementation, or fix a test that contradicts the brief's Interfaces contract and cite that contract line in your report. Never weaken a test to reach green.
+
 ## Git discipline — a shared checkout
 
 Other agents may be working in this same checkout on different files.
@@ -66,7 +70,7 @@ You may be resumed with a reviewer's findings. Fix them, re-run the tests that c
 
 ## Report
 
-Write the full report to the file path your dispatch names: what you implemented, TDD evidence (RED command, failing output, why that failure was expected; GREEN command, passing output), files changed, self-review findings, concerns.
+Write the full report to the file path your dispatch names: what you implemented, TDD evidence (RED command, failing output, why that failure was expected; GREEN command, passing output), files changed, self-review findings, concerns. In a test-writer lane, replace the TDD evidence with the checks you ran.
 
 Then reply with ONLY, under 15 lines:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT

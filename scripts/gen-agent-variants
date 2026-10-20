@@ -12,7 +12,7 @@ TEMPLATES="$SCRIPT_DIR/agent-templates"
 OUT="${1:-$REPO_ROOT/agents}"
 
 # Keep in step with hooks/lib-config SP_ROLES / SP_EFFORTS and the gate.
-ROLES="implementer reviewer investigator final-reviewer"
+ROLES="implementer reviewer investigator final-reviewer test-writer"
 EFFORTS="low medium high"
 
 mkdir -p "$OUT"

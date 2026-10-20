@@ -119,7 +119,7 @@ Everything inside a wave runs concurrently; waves themselves run in order.
    superpowers-on-steroids:dispatching-parallel-agents). Tell each
    implementer it is part of a parallel wave.
 3. Answer implementer questions as they arrive — the others keep working.
-4. When all report, generate ONE path-scoped review package per task that
+4. When all report (in ultra mode, per task as each task's lanes report instead — see Ultra Mode), generate ONE path-scoped review package per task that
    needs review (in fast mode apply the Review tier gate first — a
    transcription task with gate evidence needs no package):
    `scripts/review-package WAVE_BASE HEAD -- <task's files>`. The path
@@ -339,8 +339,8 @@ Each lane commits its own paths with an explicit pathspec, as wave-mates already
 **Per-task streaming.** Do not wait for the whole wave. As soon as both lanes of a task have reported:
 
 1. If the test-writer reports an assumption that contradicts the brief, resume it with the correction first. Then run that task's Test files once.
-2. **Converge loop** if anything fails: resume the implementer with the failing output and the test-writer's stated assumptions. It may fix the implementation or a test. A test edit must cite, in its report, the Interfaces line the test contradicted; an uncited test edit is rejected and the round repeats. Rounds 1–2 resume `caveman-implementer-<effort>`. Round 3 dispatches `superpowers-on-steroids:caveman-implementer-high` on `final-reviewer: model=` with the brief, both reports and the failing output. If it is still red after round 3, handle the task as BLOCKED.
-3. Once the task is green, generate its path-scoped review package and dispatch its reviewer right away (the Review tier gate still applies). Then run the normal Fix Loop.
+2. **Converge loop** if anything fails: resume the implementer with the failing output and the test-writer's stated assumptions. It may fix the implementation or a test. A test edit must cite, in its report, the Interfaces line the test contradicted; an uncited test edit is rejected and the round repeats. Rounds 1–2 resume `caveman-implementer-<effort>`. Round 3 dispatches `superpowers-on-steroids:caveman-implementer-high` on `final-reviewer: model=` with the brief, both reports and the failing output. If it is still red after round 3, handle the task as BLOCKED. Converge rounds and review Fix Loop rounds are counted separately: a task gets up to 3 of each.
+3. Once the task is green, generate its path-scoped review package (scoped to both lanes' files: Create/Modify and Test) and dispatch its reviewer right away (the Review tier gate still applies). Then run the normal Fix Loop.
 
 The task's wave-mates keep running meanwhile. Their file sets are disjoint and every review package is path-scoped. The wave suite (Running a wave, step 7), the final whole-branch review and verification-before-completion are unchanged.
 

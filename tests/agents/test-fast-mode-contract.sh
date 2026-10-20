@@ -231,7 +231,8 @@ for skill in subagent-driven-development requesting-code-review brainstorming wr
 done
 for token in "## Ultra Mode" "Lane split" "Transcription tasks" "fast fallback" "Converge loop" \
     "the Interfaces line the test contradicted" '`superpowers-on-steroids:caveman-test-writer-<effort>`' \
-    "Tests belong to a test-writer lane: implement only." "flag tautological tests" "Mode: ultra —"; do
+    "Tests belong to a test-writer lane: implement only." "flag tautological tests" "Mode: ultra —" \
+    "counted separately: a task gets up to 3 of each" "in ultra mode, per task as each task's lanes report instead"; do
     assert_in_file "ultra SDD" "$token" "$sdd_skill"
 done
 assert_in_file "ultra review" "flag tautological tests" "$REPO_ROOT/skills/requesting-code-review/SKILL.md"

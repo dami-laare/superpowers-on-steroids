@@ -113,6 +113,13 @@ expect_allow "implementer-low on sonnet (judgment) is allowed by default" \
     "$(payload "$P:caveman-implementer-low" sonnet "build")" "$ROOT"
 expect_allow "implementer-high on opus (round-3 escalation) is allowed by default" \
     "$(payload "$P:caveman-implementer-high" opus "fix")" "$ROOT"
+expect_allow "test-writer-low on sonnet is allowed by default" \
+    "$(payload "$P:caveman-test-writer-low" sonnet "write tests")" "$ROOT"
+expect_deny "test-writer at the wrong effort is denied" 'caveman-test-writer-low + model "sonnet" (configured)' \
+    "$(payload "$P:caveman-test-writer-medium" sonnet "write tests")" "$ROOT"
+expect_allow "configured test-writer effort and model are allowed" \
+    "$(payload "$P:caveman-test-writer-high" opus "write tests")" "$ROOT" \
+    SUPERPOWERS_TEST_WRITER_MODEL=opus SUPERPOWERS_TEST_WRITER_EFFORT=high
 
 # --- Config changes the allowed pair ---
 expect_allow "configured reviewer effort and model are allowed" \

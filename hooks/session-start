@@ -34,7 +34,7 @@ using_superpowers_escaped=$(escape_for_json "$using_superpowers_content")
 # Always emitted in full: every role is always configured.
 config_block="\n\n<SUPERPOWERS_CONFIG>\nmode: $(sp_resolve_mode)"
 config_block="${config_block}\nimplementer: mechanical=$(sp_role_model implementer mechanical) judgment=$(sp_role_model implementer judgment) effort=$(sp_role_effort implementer)"
-for role_name in reviewer investigator final-reviewer; do
+for role_name in reviewer investigator final-reviewer test-writer; do
     config_block="${config_block}\n${role_name}: model=$(sp_role_model "$role_name") effort=$(sp_role_effort "$role_name")"
 done
 sp_warnings="$(sp_config_warnings)"

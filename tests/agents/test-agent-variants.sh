@@ -18,7 +18,7 @@ fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
 
 echo "agent variant tests"
 
-ROLES="implementer reviewer investigator final-reviewer"
+ROLES="implementer reviewer investigator final-reviewer test-writer"
 EFFORTS="low medium high"
 
 # --- Generator output matches the checked-in files byte for byte ---
@@ -36,12 +36,12 @@ else
     diff -r "$TMP/agents" "$TMP/checked-in" | head -20 | sed 's/^/    /'
 fi
 
-# --- Exactly 12 variants, no bare names ---
+# --- Exactly 15 variants, no bare names ---
 count="$(find "$AGENTS_DIR" -maxdepth 1 -name 'caveman-*.md' | wc -l | tr -d ' ')"
-if [ "$count" = "12" ]; then
-    pass "exactly 12 caveman agent files"
+if [ "$count" = "15" ]; then
+    pass "exactly 15 caveman agent files"
 else
-    fail "expected 12 caveman agent files, found $count"
+    fail "expected 15 caveman agent files, found $count"
 fi
 for role in $ROLES; do
     if [ -e "$AGENTS_DIR/caveman-$role.md" ]; then
@@ -98,6 +98,21 @@ for role in $ROLES; do
         *": "*) fail "template caveman-$role description contains ': ' (breaks YAML)" ;;
         *) pass "template caveman-$role description is YAML-safe" ;;
     esac
+done
+
+# --- Ultra lanes: implementer knows the lane, test-writer stays in its files ---
+if grep -qF '## Test-writer lane (ultra mode)' "$TEMPLATES/caveman-implementer.md" \
+    && grep -qF 'implement only' "$TEMPLATES/caveman-implementer.md"; then
+    pass "implementer template carries the test-writer lane clause"
+else
+    fail "implementer template lacks the test-writer lane clause"
+fi
+for token in "Do not read, open, or wait for the task's implementation files" "Never edit an implementation file" "DONE_WITH_CONCERNS" "NEEDS_CONTEXT" "git add -A"; do
+    if grep -qF -- "$token" "$TEMPLATES/caveman-test-writer.md"; then
+        pass "test-writer template: '$token'"
+    else
+        fail "test-writer template lacks '$token'"
+    fi
 done
 
 if [[ "$FAILURES" -gt 0 ]]; then

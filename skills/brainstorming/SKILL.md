@@ -80,6 +80,7 @@ digraph brainstorming {
 
 - Fill in the template at `skills/brainstorming/brainstormer-prompt.md`: the idea verbatim, the context you gathered, and `MAX_ROUNDS` (default 8; 3 for trivially scoped work).
 - In fast mode (`<SUPERPOWERS_CONFIG>` with `mode: fast`), when spec-shaped input already exists — a design doc path was supplied, or the request is bounded to ≤2 non-test files with clear acceptance criteria — set `MAX_ROUNDS` to 2 and say so in the dispatch. Shorten only: the dialogue and the HARD-GATE still run; the Brainstormer already jumps to `DESIGN — CONSENSUS` once no material question remains.
+- `mode: ultra` includes all of fast mode. Every fast-mode instruction applies to ultra too — both fast-mode rules in this skill apply unchanged.
 - Spawn one Brainstormer with the Agent tool. Its final message each turn is its round; reply with SendMessage to the same agent so it keeps full dialogue context. Never spawn a fresh Brainstormer mid-dialogue — context loss resets the brainstorm.
 
 **Answering as the Proxy:**

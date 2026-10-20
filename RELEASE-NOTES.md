@@ -1,5 +1,40 @@
 # Superpowers Release Notes
 
+## v7.1.0 (2026-10-20)
+
+### Ultra mode (experimental)
+
+- **What.** `mode: ultra` (plugin option or `SUPERPOWERS_MODE=ultra`) is fast
+  mode plus a parallel test-writer lane. For each judgment task, a new
+  `caveman-test-writer-<effort>` agent writes the task's tests from the plan's
+  Interfaces contract while the implementer writes the code, so neither waits
+  for the other. As soon as both lanes of a task report, the controller runs
+  its tests and, if they fail, runs a converge loop (implementer fixes code,
+  or fixes a test by citing the contract line it contradicted; max 3 rounds,
+  round 3 on `caveman-implementer-high`), then reviews that task, without
+  waiting for the rest of the wave.
+- **Trade-off.** Ultra drops TDD RED evidence for those tasks, and tests are
+  written blind to the implementation. A wrong API assumption costs a
+  converge round, so the plan's Interfaces block decides how fast ultra is.
+  Transcription tasks and tasks without a disjoint Test path or contract run
+  exactly as in fast mode. The wave suite, final review and verification
+  gates are unchanged.
+- **Config.** New keys `test_writer_model` (default `sonnet`) and
+  `test_writer_effort` (default `low`), env overrides
+  `SUPERPOWERS_TEST_WRITER_MODEL` / `SUPERPOWERS_TEST_WRITER_EFFORT`.
+  `<SUPERPOWERS_CONFIG>` gains a `test-writer:` line, and the config gate
+  covers the new agent. The implementer agents learned a "test-writer lane"
+  clause.
+- **Not yet done (recommended next).** Cross-wave pipelining, a wave cap
+  above 4, batching tiny tasks, worktree-per-lane isolation, and a measured
+  standard vs fast vs ultra acceptance run. Ultra stays experimental until
+  that run exists.
+
+### Internal
+
+- Tests cover the new mode value, role keys, config line, gate pairs,
+  15 generated agents, and the ultra superset rule in each mode-aware skill.
+
 ## v7.0.0 (2026-10-06)
 
 ### Per-role model and effort config replaces the tier fields (BREAKING)

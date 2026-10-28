@@ -1,5 +1,19 @@
 # Superpowers Release Notes
 
+## v7.1.1 (2026-10-28)
+
+### Fixes
+
+- **Env var silently overriding a plugin option.** A `SUPERPOWERS_<KEY>` env
+  var (shell or a `settings.json` `env` block) wins over the plugin option of
+  the same key. When the two disagreed, nothing said so: setting the plugin
+  option to `mode: ultra` with a leftover `SUPERPOWERS_MODE=fast` still ran
+  fast mode, and agents announced fast mode. Precedence is unchanged, but the
+  session-start hook now emits `warning: SUPERPOWERS_MODE=fast overrides plugin
+  option mode=ultra; unset SUPERPOWERS_MODE to use the plugin option`, shown
+  to your human partner and in `<SUPERPOWERS_CONFIG>`. Applies to every config
+  key. No warning when env and option agree.
+
 ## v7.1.0 (2026-10-20)
 
 ### Ultra mode (experimental)

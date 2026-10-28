@@ -406,6 +406,30 @@ assert_command_output \
     SUPERPOWERS_MODE=ultra \
     bash "$HOOK_UNDER_TEST"
 
+env_shadow_home="$(make_home config-env-shadow)"
+assert_command_output \
+    "SUPERPOWERS_MODE shadowing a different plugin option is warned" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: fast"$'\037'"warning: SUPERPOWERS_MODE=fast overrides plugin option mode=ultra; unset SUPERPOWERS_MODE to use the plugin option" \
+    "mode: ultra" \
+    "$env_shadow_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=ultra \
+    SUPERPOWERS_MODE=fast \
+    bash "$HOOK_UNDER_TEST"
+
+env_agree_home="$(make_home config-env-agree)"
+assert_command_output \
+    "SUPERPOWERS_MODE matching the plugin option is not warned" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: ultra" \
+    "warning:" \
+    "$env_agree_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=ultra \
+    SUPERPOWERS_MODE=ultra \
+    bash "$HOOK_UNDER_TEST"
+
 env_override_home="$(make_home config-env-override)"
 assert_command_output \
     "SUPERPOWERS_MODE=standard force-disables a fast plugin option" \
@@ -455,8 +479,8 @@ env_role_wins_home="$(make_home config-env-role-wins)"
 assert_command_output \
     "SUPERPOWERS_REVIEWER_MODEL wins over the plugin option" \
     "nested" \
-    "reviewer: model=opus effort=medium" \
-    "reviewer: model=sonnet effort=medium"$'\037'"warning:" \
+    "reviewer: model=opus effort=medium"$'\037'"warning: SUPERPOWERS_REVIEWER_MODEL=opus overrides plugin option reviewer_model=sonnet" \
+    "reviewer: model=sonnet effort=medium"$'\037'"ignored" \
     "$env_role_wins_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_REVIEWER_MODEL=sonnet \

@@ -93,9 +93,18 @@ sp_role_effort() {
 # Only variable names, key names, and whitelisted values are printed, so the
 # output is safe to embed in hook JSON.
 sp_config_warnings() {
-    local key upper src raw legacy
+    local key upper src raw legacy env_name opt_name env_val opt_val
     for key in $SP_KEYS; do
         upper="$(sp_upper "$key")"
+        # Env silently beating the plugin option looks like the option is broken.
+        env_name="SUPERPOWERS_${upper}"
+        opt_name="CLAUDE_PLUGIN_OPTION_${upper}"
+        env_val="$(sp_accept "$key" "${!env_name:-}")"
+        opt_val="$(sp_accept "$key" "${!opt_name:-}")"
+        if [ -n "$env_val" ] && [ -n "$opt_val" ] && [ "$env_val" != "$opt_val" ]; then
+            printf 'warning: %s=%s overrides plugin option %s=%s; unset %s to use the plugin option\n' \
+                "$env_name" "$env_val" "$key" "$opt_val" "$env_name"
+        fi
         for src in "SUPERPOWERS_${upper}" "CLAUDE_PLUGIN_OPTION_${upper}"; do
             raw="${!src:-}"
             [ -n "$raw" ] || continue

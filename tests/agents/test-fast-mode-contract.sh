@@ -239,6 +239,38 @@ assert_in_file "ultra review" "flag tautological tests" "$REPO_ROOT/skills/reque
 assert_in_file "ultra plans" "(fast fallback)" "$plans_skill"
 assert_in_file "ultra implementer" "## Test-writer lane (ultra mode)" "$AGENTS_DIR/caveman-implementer-low.md"
 
+# --- Blitz: superset of ultra in planning/review skills; SDD replaces the wave loop ---
+BLITZ_RULE='`mode: blitz` includes all of ultra mode. Every ultra-mode instruction applies to blitz too'
+SEAM_LINE="Check every cross-lane seam against the plan's Interfaces"
+blitz_home="$(mktemp -d)"
+blitz_emitted="$(env -i PATH="${PATH:-}" HOME="$blitz_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" CLAUDE_PLUGIN_OPTION_MODE=blitz \
+    bash "$REPO_ROOT/hooks/session-start" 2>/dev/null)" || blitz_emitted=""
+rm -rf "$blitz_home"
+if printf '%s' "$blitz_emitted" | grep -qF -- "mode: blitz"; then
+    pass "blitz wiring: hook emits 'mode: blitz'"
+else
+    fail "blitz wiring: hook does not emit 'mode: blitz'"
+fi
+for skill in requesting-code-review brainstorming writing-plans; do
+    assert_in_file "blitz superset rule" "$BLITZ_RULE" "$REPO_ROOT/skills/$skill/SKILL.md"
+done
+for token in "## Blitz Mode" "Blitz lane: no tests, no typecheck, no git." "Mode: blitz —" \
+    "falling back to ultra" "scripts/plan-lanes" "only test runner" "--maxWorkers=2" \
+    "Never revert a stray automatically" "folded into Task M" "$SEAM_LINE" \
+    "implementer, blitz lane"; do
+    assert_in_file "blitz SDD" "$token" "$sdd_skill"
+done
+assert_in_file "blitz review" "$SEAM_LINE" "$REPO_ROOT/skills/requesting-code-review/SKILL.md"
+for token in "## Blitz Mode Plans" "(shared)" "- typecheck:" "- unit:" "**7. Blitz contracts:**"; do
+    assert_in_file "blitz plans" "$token" "$plans_skill"
+done
+for effort in low medium high; do
+    for token in "## Blitz lane (blitz mode)" "not run (blitz)"; do
+        assert_in_file "blitz implementer" "$token" "$AGENTS_DIR/caveman-implementer-$effort.md"
+    done
+done
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

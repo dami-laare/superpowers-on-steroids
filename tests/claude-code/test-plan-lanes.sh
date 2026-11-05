@@ -265,6 +265,24 @@ expect_exit "MAX_LANES 0 exits 2" 2 "" "$PLAN_LANES" main.md 0
 expect_exit "MAX_LANES 27 exits 2" 2 "" "$PLAN_LANES" main.md 27
 expect_exit "MAX_LANES non-numeric exits 2" 2 "" "$PLAN_LANES" main.md x
 
+# --- zero-task plan is rejected, not silently truncated ---
+gc_both | write_plan zerotasks.md
+expect_exit "zero-task plan exits 3 naming no tasks" 3 "no tasks" "$PLAN_LANES" zerotasks.md
+if [[ ! -e "$WS/zerotasks/lanes.md" ]]; then pass "zero-task plan writes no lanes.md"; else fail "zero-task plan writes no lanes.md"; fi
+
+# --- malformed Global Constraints values count as missing ---
+{
+    printf '# Plan\n\n## Global Constraints\n\n- typecheck: `true`\n- unit: garbage\n\n'
+    simple_task 1 a/x.ts none
+} | write_plan badunit.md
+expect_exit "unit: without a backticked command exits 4" 4 "unit:" "$PLAN_LANES" badunit.md
+
+{
+    printf '# Plan\n\n## Global Constraints\n\n- typecheck: whatever\n- unit: `true`\n\n'
+    simple_task 1 a/x.ts none
+} | write_plan badtypecheck.md
+expect_exit "typecheck: with neither backticks nor none exits 4" 4 "typecheck:" "$PLAN_LANES" badtypecheck.md
+
 echo ""
 if [[ "$FAILURES" -ne 0 ]]; then
     echo "FAILED: $FAILURES assertion(s)."

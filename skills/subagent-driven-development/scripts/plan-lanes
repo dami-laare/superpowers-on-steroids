@@ -46,12 +46,23 @@ function strip_path(p) {
   sub(/\/$/, "", p)
   return p
 }
-function value_of(rest) {
+function value_of_typecheck(rest,    trimmed, idx) {
   if (substr(rest, 1, 1) == "`") {
     idx = index(substr(rest, 2), "`")
+    if (idx == 0) return ""
     return "`" substr(rest, 2, idx - 1) "`"
   }
-  return "none"
+  trimmed = rest
+  sub(/[ \t]+$/, "", trimmed)
+  return (trimmed == "none") ? "none" : ""
+}
+function value_of_unit(rest,    idx) {
+  if (substr(rest, 1, 1) == "`") {
+    idx = index(substr(rest, 2), "`")
+    if (idx == 0) return ""
+    return "`" substr(rest, 2, idx - 1) "`"
+  }
+  return ""
 }
 BEGIN { infence = 0; curtask = 0; inGC = 0 }
 {
@@ -64,16 +75,18 @@ BEGIN { infence = 0; curtask = 0; inGC = 0 }
       s = substr(line, RSTART, RLENGTH)
       match(s, /[0-9]+/)
       curtask = substr(s, RSTART, RLENGTH) + 0
-      if (!seen_task[curtask]) { seen_task[curtask] = 1; print "T\t" curtask }
+      if (!seen_task[curtask]) { seen_task[curtask] = 1; task_order[++norder] = curtask; print "T\t" curtask }
     }
 
     if (line ~ /^## /) {
       inGC = (line ~ /^## Global Constraints/) ? 1 : 0
     } else if (inGC) {
       if (match(line, /^(- )?typecheck:[ \t]*/)) {
-        print "C\ttypecheck\t" value_of(substr(line, RSTART + RLENGTH))
+        v = value_of_typecheck(substr(line, RSTART + RLENGTH))
+        if (v != "") print "C\ttypecheck\t" v
       } else if (match(line, /^(- )?unit:[ \t]*/)) {
-        print "C\tunit\t" value_of(substr(line, RSTART + RLENGTH))
+        v = value_of_unit(substr(line, RSTART + RLENGTH))
+        if (v != "") print "C\tunit\t" v
       }
     }
 
@@ -112,7 +125,8 @@ BEGIN { infence = 0; curtask = 0; inGC = 0 }
   }
 }
 END {
-  for (t in seen_task) {
+  for (oi = 1; oi <= norder; oi++) {
+    t = task_order[oi]
     ok = (has_interfaces[t] && has_consumes[t] && has_produces[t]) ? 1 : 0
     print "I\t" t "\t" ok
   }
@@ -120,6 +134,13 @@ END {
 '
 
 awk "$PARSE_AWK" "$plan" > "$records"
+
+# A plan with no `### Task N` headings is unsuitable for lane splitting —
+# reject it the same way as a task missing its Interfaces block.
+if ! grep -q "$(printf '^T\t')" "$records"; then
+  echo "plan-lanes: no tasks found in $plan" >&2
+  exit 3
+fi
 
 # --- Validate rules 4 and 5 before computing anything (exit 3 / exit 4). ---
 bad_task="$(awk -F'\t' '$1 == "I" && $3 == 0 { print $2 }' "$records" | LC_ALL=C sort -n | head -1)"
@@ -449,7 +470,7 @@ lanes_md="$dir/lanes.md"
   printf '## Lanes\n\n'
   printf '| Lane | Tasks | Files | Owns shared |\n'
   printf '|---|---|---|---|\n'
-  for row in "${lane_rows[@]}"; do
+  for row in "${lane_rows[@]+"${lane_rows[@]}"}"; do
     L="$(printf '%s' "$row" | awk -F'\t' '{print $2}')"
     tasks_sp="$(printf '%s' "$row" | awk -F'\t' '{print $3}')"
     tasks_csv="$(printf '%s' "$tasks_sp" | sed 's/ /, /g')"
@@ -479,7 +500,7 @@ lanes_md="$dir/lanes.md"
   done
 } > "$lanes_md"
 
-for row in "${lane_rows[@]}"; do
+for row in "${lane_rows[@]+"${lane_rows[@]}"}"; do
   L="$(printf '%s' "$row" | awk -F'\t' '{print $2}')"
   tasks_sp="$(printf '%s' "$row" | awk -F'\t' '{print $3}')"
   tasks_csv="$(printf '%s' "$tasks_sp" | sed 's/ /, /g')"
@@ -528,7 +549,7 @@ for row in "${lane_rows[@]}"; do
   } > "$brief"
 done
 
-for row in "${lane_rows[@]}"; do
+for row in "${lane_rows[@]+"${lane_rows[@]}"}"; do
   L="$(printf '%s' "$row" | awk -F'\t' '{print $2}')"
   tasks_sp="$(printf '%s' "$row" | awk -F'\t' '{print $3}')"
   echo "lane $L: tasks $tasks_sp"

@@ -81,7 +81,7 @@ plugin.json userConfig / SUPERPOWERS_MODE=blitz
   - Strip a trailing `:<digits>` or `:<digits>-<digits>` line range.
   - Normalise the path: drop a leading `./`, collapse `//`, and drop a trailing `/`.
   - Detect the literal ` (shared)` suffix after the closing backtick. A path counts as shared if any task marks it.
-- **Depends on.** Take the text after `**Depends on:**` and cut it at the first `(`. Split what remains on commas, spaces, semicolons and the words `and`/`Task`/`Tasks`. A token counts only if it is a pure integer (`^[0-9]+$`) or a range `^[0-9]+-[0-9]+$` (expanded inclusively); ignore every other token, including `none`. Edges apply only to numbers that are tasks in the plan.
+- **Depends on.** Take the text after `**Depends on:**` and cut it at the first `(`. Split what remains on commas, spaces, semicolons and the words `and`/`Task`/`Tasks`. Strip a trailing `.` or `:` from each token, and treat an en-dash (`–`) the same as a hyphen. A token counts only if it is a pure integer (`^[0-9]+$`) or a range `^[0-9]+-[0-9]+$` (expanded inclusively); ignore every other token, including `none`. Edges apply only to numbers that are tasks in the plan.
 - **Interfaces.** Require a `**Interfaces:**` block that contains both a `Consumes:` line and a `Produces:` line. The value `none` is allowed on either line.
 - **Global Constraints.** Inside `## Global Constraints`, read two lines. A leading `- ` is tolerated on both.
   - `typecheck:` takes a backticked command or the word `none`.

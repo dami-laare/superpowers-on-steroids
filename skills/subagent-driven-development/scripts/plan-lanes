@@ -113,6 +113,8 @@ BEGIN { infence = 0; curtask = 0; inGC = 0 }
         for (di = 1; di <= ntok; di++) {
           tok = dtok[di]
           if (tok == "" || tok == "and") continue
+          sub(/[.:]+$/, "", tok)
+          gsub(/–/, "-", tok)
           if (tok ~ /^[0-9]+$/) {
             num = tok + 0
             if (num != curtask) print "D\t" curtask "\t" num

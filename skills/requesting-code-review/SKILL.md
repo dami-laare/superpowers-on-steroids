@@ -44,6 +44,8 @@ passing it the printed package path plus the four placeholder values below.
 
 `mode: ultra` includes all of fast mode. Every fast-mode instruction applies to ultra too. In ultra, also tell the reviewer: "Tests assert the contract's behaviours, not the implementation's incidental output; flag tautological tests as Important."
 
+`mode: blitz` includes all of ultra mode. Every ultra-mode instruction applies to blitz too. Blitz has no per-task review step: this final review is the only review gate, and it is mandatory. In blitz, also tell the reviewer: "Blitz: no per-task review ran. Check every cross-lane seam against the plan's Interfaces (names, types, optional vs required, error behaviour); flag drift as Important."
+
 **Placeholders:**
 - `{DESCRIPTION}` - Brief summary of what you built
 - `{PLAN_OR_REQUIREMENTS}` - What it should do

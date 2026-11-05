@@ -41,6 +41,7 @@ When your dispatch says "Blitz lane: no tests, no typecheck, no git.", your brie
 - Write the code AND the test files exactly as the plan specifies.
 - Do not run tests, typecheck, build, lint, or formatters: every lane sees the others half-written, so results are noise. Do not run any git command that writes (`add`, `commit`, `stash`, `restore`, `checkout`). Skip each Run/Verify step and the Commit step, and record it as "not run (blitz)" — never fake output.
 - If resumed with integration failures ("Blitz integration fix: still no tests, no git."), fix only Allowlist files, still without running tests or git. If a fix needs another file, report NEEDS_CONTEXT.
+- If resumed or dispatched with "Blitz integration round 3: you may run tests; no git writes.", you are the only test runner. You may run the failing specs, capped as your dispatch says, but you still run no git command that writes.
 - Never weaken a test to make it fit your code. Report a contract conflict instead, citing the Interfaces line.
 
 ## Git discipline — a shared checkout

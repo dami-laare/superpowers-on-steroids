@@ -101,11 +101,27 @@ BEGIN { infence = 0; curtask = 0; inGC = 0 }
         print "F\t" curtask "\t" path "\t" shared
       }
       if (line ~ /^\*\*Depends on:\*\*/) {
-        tmpd = line
-        while (match(tmpd, /[0-9]+/)) {
-          num = substr(tmpd, RSTART, RLENGTH) + 0
-          if (num != curtask) print "D\t" curtask "\t" num
-          tmpd = substr(tmpd, RSTART + RLENGTH)
+        rest = line
+        sub(/^\*\*Depends on:\*\*[ \t]*/, "", rest)
+        idx3 = index(rest, "(")
+        if (idx3 > 0) rest = substr(rest, 1, idx3 - 1)
+        gsub(/,/, " ", rest)
+        gsub(/;/, " ", rest)
+        gsub(/[Tt]asks/, " ", rest)
+        gsub(/[Tt]ask/, " ", rest)
+        ntok = split(rest, dtok, /[ \t]+/)
+        for (di = 1; di <= ntok; di++) {
+          tok = dtok[di]
+          if (tok == "" || tok == "and") continue
+          if (tok ~ /^[0-9]+$/) {
+            num = tok + 0
+            if (num != curtask) print "D\t" curtask "\t" num
+          } else if (tok ~ /^[0-9]+-[0-9]+$/) {
+            split(tok, drange, "-")
+            for (dk = drange[1] + 0; dk <= drange[2] + 0; dk++) {
+              if (dk != curtask) print "D\t" curtask "\t" dk
+            }
+          }
         }
       }
       if (line ~ /^\*\*Interfaces:\*\*/) has_interfaces[curtask] = 1
@@ -143,20 +159,21 @@ if ! grep -q "$(printf '^T\t')" "$records"; then
 fi
 
 # --- Validate rules 4 and 5 before computing anything (exit 3 / exit 4). ---
-bad_task="$(awk -F'\t' '$1 == "I" && $3 == 0 { print $2 }' "$records" | LC_ALL=C sort -n | head -1)"
-if [ -n "$bad_task" ]; then
-  echo "plan-lanes: Task $bad_task is missing a **Interfaces:** block with both a Consumes: and a Produces: line" >&2
+bad_tasks="$(awk -F'\t' '$1 == "I" && $3 == 0 { print $2 }' "$records" | LC_ALL=C sort -n)"
+if [ -n "$bad_tasks" ]; then
+  bad_csv="$(printf '%s\n' "$bad_tasks" | sed 's/^/Task /' | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
+  echo "plan-lanes: $bad_csv missing a **Interfaces:** block with both a Consumes: and a Produces: line" >&2
   exit 3
 fi
 
 has_typecheck="$(awk -F'\t' '$1 == "C" && $2 == "typecheck" { print "1"; exit }' "$records")"
 has_unit="$(awk -F'\t' '$1 == "C" && $2 == "unit" { print "1"; exit }' "$records")"
 if [ -z "$has_typecheck" ]; then
-  echo "plan-lanes: ## Global Constraints is missing a typecheck: line" >&2
+  echo "plan-lanes: ## Global Constraints has a missing or malformed typecheck: line (needs a backticked command or 'none')" >&2
   exit 4
 fi
 if [ -z "$has_unit" ]; then
-  echo "plan-lanes: ## Global Constraints is missing a unit: line" >&2
+  echo "plan-lanes: ## Global Constraints has a missing or malformed unit: line (needs a backticked command)" >&2
   exit 4
 fi
 
@@ -446,6 +463,17 @@ if [ "$status_word" = "CYCLE" ]; then
   exit 5
 fi
 
+# --- Extract every task's full text before touching any output file. A
+# task-brief failure (e.g. a heading task-brief's own regex misses) must
+# not leave partial output behind. ---
+tasknums="$(awk -F'\t' '$1=="T"{print $2}' "$records" | LC_ALL=C sort -n -u)"
+for n in $tasknums; do
+  if ! "$SELF_DIR/task-brief" "$plan" "$n" "$tmp/task-$n.md" > /dev/null 2>"$tmp/task-$n.err"; then
+    echo "plan-lanes: could not extract Task $n text: $(cat "$tmp/task-$n.err")" >&2
+    exit 2
+  fi
+done
+
 # --- Render outputs, only now that computation has fully succeeded. ---
 dir="$("$SELF_DIR/sdd-workspace" "$plan")"
 rm -f "$dir"/lane-*-brief.md
@@ -490,7 +518,7 @@ lanes_md="$dir/lanes.md"
     if [ "$kind" = "FOLD" ]; then
       printf '| %s | folded into Task %s | - |\n' "$task" "$rest1"
     else
-      msg="$rest1"
+      msg="$(printf '%s' "$rest1" | sed 's/|/\\|/g')"
       paths_csv="-"
       if [ -n "$rest2" ]; then
         paths_csv="$(printf '%s\n' "$rest2" | tr '\t' '\n' | sed 's/^/`/; s/$/`/' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
@@ -529,19 +557,23 @@ for row in "${lane_rows[@]+"${lane_rows[@]}"}"; do
     for n in $tasks_sp; do
       [ "$first" -eq 1 ] || printf '\n'
       first=0
-      "$SELF_DIR/task-brief" "$plan" "$n" "$tmp/task-$n.md" > /dev/null
       cat "$tmp/task-$n.md"
     done
     if [ -n "$own_paths" ]; then
+      duty_heading_done=0
       printf '%s\n' "$own_paths" | while IFS= read -r p; do
         duty_tasks="$(awk -F'\t' -v l="$L" -v p="$p" '$1=="DUTY" && $2==l && $3==p {print $4}' "$proto" | LC_ALL=C sort -n)"
         if [ -n "$duty_tasks" ]; then
-          printf '\n## Shared-file duties\n\n'
+          if [ "$duty_heading_done" -eq 0 ]; then
+            printf '\n## Shared-file duties\n\n'
+            duty_heading_done=1
+          else
+            printf '\n'
+          fi
           printf 'Reference only — apply ONLY the edits to `%s`; do not touch any other file these tasks list.\n' "$p"
           printf '%s\n' "$duty_tasks" | while IFS= read -r n; do
             printf '\n'
-            "$SELF_DIR/task-brief" "$plan" "$n" "$tmp/task-dup-$n.md" > /dev/null
-            cat "$tmp/task-dup-$n.md"
+            cat "$tmp/task-$n.md"
           done
         fi
       done

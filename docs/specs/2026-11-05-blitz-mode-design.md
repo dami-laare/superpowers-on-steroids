@@ -81,7 +81,7 @@ plugin.json userConfig / SUPERPOWERS_MODE=blitz
   - Strip a trailing `:<digits>` or `:<digits>-<digits>` line range.
   - Normalise the path: drop a leading `./`, collapse `//`, and drop a trailing `/`.
   - Detect the literal ` (shared)` suffix after the closing backtick. A path counts as shared if any task marks it.
-- **Depends on.** Read the task numbers listed. The value `none` is allowed.
+- **Depends on.** Take the text after `**Depends on:**` and cut it at the first `(`. Split what remains on commas, spaces, semicolons and the words `and`/`Task`/`Tasks`. A token counts only if it is a pure integer (`^[0-9]+$`) or a range `^[0-9]+-[0-9]+$` (expanded inclusively); ignore every other token, including `none`. Edges apply only to numbers that are tasks in the plan.
 - **Interfaces.** Require a `**Interfaces:**` block that contains both a `Consumes:` line and a `Produces:` line. The value `none` is allowed on either line.
 - **Global Constraints.** Inside `## Global Constraints`, read two lines. A leading `- ` is tolerated on both.
   - `typecheck:` takes a backticked command or the word `none`.
@@ -92,7 +92,7 @@ plugin.json userConfig / SUPERPOWERS_MODE=blitz
 | Exit | Cause | Controller action |
 |---|---|---|
 | 0 | lanes computed | run blitz |
-| 2 | usage error, or a missing plan file | **hard stop**: report it; do not fall back |
+| 2 | usage error, a missing plan file, or a task's text could not be extracted | **hard stop**: report it; do not fall back |
 | 3 | the plan has no tasks, or a task lacks the Interfaces block, or its Consumes or Produces line | whole-plan fallback to ultra |
 | 4 | the `unit:` line or the `typecheck:` line is missing or malformed (`unit:` needs a backticked command; `typecheck:` a backticked command or `none`) | whole-plan fallback to ultra |
 | 5 | a Depends-on cycle among one lane's tasks | whole-plan fallback to ultra |
@@ -128,8 +128,7 @@ plugin.json userConfig / SUPERPOWERS_MODE=blitz
 3. **`## Do not touch`.** One line for each shared path that one of the lane's tasks lists but another lane owns:
    ``- `<path>` is owned by lane Y; skip your task's edits to it.``
 4. **`## Tasks`.** The full text of each task, in lane order. The script produces it by running `task-brief PLAN N` for each task and joining the results, so it reuses task-brief instead of duplicating it.
-5. **`## Shared-file duties`.** This section appears in owner lanes only. For each shared path the lane owns, it carries the full text of every *foreign* task that touches the path. A foreign task is one in another lane. The section opens with this heading line:
-   "Reference only — apply ONLY the edits to `<path>`; do not touch any other file these tasks list."
+5. **`## Shared-file duties`.** This section appears once in owner lanes that have at least one foreign duty, never per path. For each shared path the lane owns, it carries a "Reference only — apply ONLY the edits to `<path>`; do not touch any other file these tasks list." line, followed by the full text of every *foreign* task that touches that path. A foreign task is one in another lane.
 
 **Other Files-line parsers.** No other script parses `Create:`/`Modify:`/`Test:` lines. `task-brief` and `review-package` treat task text and git ranges as opaque. So they tolerate the ` (shared)` suffix by construction. test-plan-lanes asserts that `task-brief` keeps the suffix verbatim.
 
@@ -163,6 +162,7 @@ The clause says:
   - Fix only files in the Allowlist.
   - Still run no tests and no git.
   - If a fix needs another file, report NEEDS_CONTEXT.
+- If resumed or dispatched for round 3 with "Blitz integration round 3: you may run tests; no git writes.", it is the only test runner. It may run the failing specs, capped as the dispatch says, but it still makes no git write.
 
 The existing git-discipline rules still hold, and so does "never weaken a test". When the dispatch activates the clause, the clause overrides "Commit with an explicit pathspec". This follows the ultra lane-clause precedent.
 
@@ -198,13 +198,14 @@ The existing git-discipline rules still hold, and so does "never weaken a test".
 2. **Baseline.**
    1. Record `BLITZ_BASE=$(git rev-parse HEAD)`.
    2. Write `git status --porcelain` to `<workspace>/blitz-baseline.txt`. Repos can already have untracked files, such as `.serena/`.
+   3. Check every lane's Allowlist against that baseline. If any Allowlist path is already modified or untracked, stop and report it to your human partner before dispatch — its pre-existing edits would be swept into a task commit at step 8.
 3. **Dispatch.** Send all lanes in ONE message. Each dispatch carries:
    - the lane brief path;
    - the report path;
    - the line "Blitz lane: no tests, no typecheck, no git."
 
    Answer lane questions as they arrive.
-4. **Lane status.** A BLOCKED or NEEDS_CONTEXT lane goes through the existing status handling: re-dispatch with more context or a more capable model. Every lane must be DONE or DONE_WITH_CONCERNS before integration starts.
+4. **Lane status.** A BLOCKED or NEEDS_CONTEXT lane goes through the existing status handling: re-dispatch with more context or a more capable model. The re-dispatch — to the same lane or a fresh one — carries the same line, "Blitz lane: no tests, no typecheck, no git."; without it the agent falls back to its default contract (TDD, run tests, commit). Every lane must be DONE or DONE_WITH_CONCERNS before integration starts.
 5. **Stray check.**
    1. Run `git status --porcelain` again.
    2. Remove the baseline entries.
@@ -221,17 +222,17 @@ The existing git-discipline rules still hold, and so does "never weaken a test".
    2. **Rounds 1–2:**
       - Resume the owning lane implementers in parallel via SendMessage. Their allowlists are disjoint, so they cannot collide.
       - Each lane gets only its own failures, plus the line "Blitz integration fix: still no tests, no git."
-      - If a lane implementer is no longer addressable, dispatch a fresh `caveman-implementer-<effort>` on `judgment=` with the lane brief and the failures. Note this in the ledger.
+      - If a lane implementer is no longer addressable, dispatch a fresh `caveman-implementer-<effort>` on `judgment=` with the lane brief and the failures, carrying both "Blitz lane: no tests, no typecheck, no git." and "Blitz integration fix: still no tests, no git." Note this in the ledger.
       - Between rounds, the controller re-runs typecheck and only the failing specs, capped.
    3. **Round 3:**
       - Dispatch one `caveman-implementer-high` on `final-reviewer: model=`. It gets every remaining failure, the lane reports and `lanes.md`.
       - It may run tests, because it is now the only runner.
       - It still makes no git writes.
-      - Its brief carries the caps verbatim:
+      - Its brief carries, verbatim, the quoted line "Blitz integration round 3: you may run tests; no git writes." together with the caps:
         "Cap test runner parallelism: jest `--maxWorkers=2`, vitest `--maxWorkers=2`, equivalent flags for other runners. You are the only agent running tests. Check `ps` for stray jest/vitest/temporal/test-server processes first and wait or kill them."
    4. **Still red after round 3:** the run is BLOCKED. Report it to the human with the failure list. Commit nothing while the tests are red.
    5. **Green:** run typecheck and the full capped unit suite one final time. This catches a fix that regressed a spec that was not re-run.
-8. **Commits.** Follow the commit map in plan order.
+8. **Commits.** Before committing, confirm `git rev-parse HEAD` still equals `BLITZ_BASE`. If it does not, some lane committed mid-run; stop and report it to your human partner, because the commit map below assumes an untouched HEAD. Otherwise follow the commit map in plan order.
    1. For each task, run `git add -- <paths>`, then `git commit -m "<message>" -- <paths>`. The add is needed because a pathspec commit cannot pick up new untracked files.
    2. If the map says `<none — controller writes>`, the controller writes a Conventional message from the task title.
    3. A task marked `folded into Task M` gets no commit, only a ledger note.

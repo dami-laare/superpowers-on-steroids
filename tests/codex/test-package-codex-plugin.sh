@@ -185,6 +185,12 @@ else
   fail "archive preserves executable script mode"
 fi
 
+if [[ -x "$extracted/skills/subagent-driven-development/scripts/plan-lanes" ]]; then
+  pass "archive ships plan-lanes executable"
+else
+  fail "archive ships plan-lanes executable"
+fi
+
 zip_times="$(python3 - "$archive" <<'PY'
 import sys
 import zipfile

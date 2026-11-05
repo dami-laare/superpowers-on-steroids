@@ -95,6 +95,8 @@ digraph process {
 
 ## Wave-Based Parallel Execution
 
+In blitz mode none of this section runs: tasks run in file-ownership lanes instead of waves. See Blitz Mode.
+
 Tasks run in waves, not one at a time. A wave is a set of tasks that are
 mutually independent (no dependency edges between them) AND file-disjoint
 (no shared Create/Modify/Test files — one shared test file disqualifies).
@@ -206,7 +208,7 @@ transcription tasks skip per-task review on green report evidence, judgment
 tasks reviewed; fix loop capped at 3 rounds`, `Mode: ultra — fast-mode rules
 plus a parallel test-writer lane on judgment tasks; per-task converge loop
 capped at 3 rounds`, or `Mode: standard — every task reviewed; fix loop capped
-at 3 rounds`. With no block at all (a harness
+at 3 rounds`. In blitz mode the policy line comes from `scripts/plan-lanes` (see Blitz Mode). With no block at all (a harness
 without the SessionStart hook), treat the mode as standard and say so.
 
 ## Model Selection
@@ -269,6 +271,7 @@ and can be changed only by choosing the variant; the harness settings
 | `investigator` | `caveman-investigator-<effort>` | `investigator: model=` | `investigator: effort=` | context gathering and design research |
 | `final-reviewer` | `caveman-final-reviewer-<effort>` | `final-reviewer: model=` | `final-reviewer: effort=` | the final whole-branch review |
 | `test-writer` | `caveman-test-writer-<effort>` | `test-writer: model=` | `test-writer: effort=` | ultra mode only: a judgment task's tests, written in parallel with its implementer |
+| implementer, blitz lane | `caveman-implementer-<effort>` | `judgment=` | `implementer: effort=` | blitz mode only: one lane of tasks, no tests, no git |
 | implementer, round 3 | `caveman-implementer-high` | `final-reviewer: model=` | `high` | fix-loop round-3 escalation |
 
 ## Fast Mode
@@ -345,6 +348,39 @@ Each lane commits its own paths with an explicit pathspec, as wave-mates already
 The task's wave-mates keep running meanwhile. Their file sets are disjoint and every review package is path-scoped. The wave suite (Running a wave, step 7), the final whole-branch review and verification-before-completion are unchanged.
 
 **Reviewer checklist addition.** Every ultra task-reviewer dispatch adds: "Tests assert the contract's behaviours, not the implementation's incidental output; flag tautological tests as Important."
+
+## Blitz Mode
+
+`mode: blitz` replaces the wave loop. It does not extend fast or ultra execution: every task runs at once in file-ownership lanes, with no per-task tests or review, then one integration pass. The planning and review skills treat blitz as a superset of ultra; execution is the only place it differs.
+
+Blitz is experimental. It trades TDD red-before-green, per-task review gates, early detection of a bad Interfaces contract, and bisectable history for wall-clock time. A wrong contract surfaces at integration, and every lane built on it pays. Do not use blitz for schema migrations with data backfills, security- or auth-critical changes that need a gate per change, or plans with vague tasks.
+
+**Still applies:** Model Selection, caveman agent dispatch, Handling Implementer Status, the 3-round fix bound, File Handoffs, the final whole-branch review and its single fix subagent, verification-before-completion, finishing-a-development-branch.
+
+**Dropped:** Execution Waves (the plan keeps them as the fallback path), per-task review and re-review, the Review tier gate, test-writer lanes, the per-task converge loop, and the per-wave suite.
+
+**1. Lanes.** After the Pre-Flight Plan Review scan, run `scripts/plan-lanes PLAN_FILE`. It unions tasks that share a file, packs them into at most 6 lanes, orders each lane by Depends on, and writes `lanes.md` (lane table, `typecheck:`/`unit:` commands, commit map) plus one `lane-<X>-brief.md` per lane into the plan's workspace.
+- Exit 0: announce `Mode: blitz — <N> lanes dispatched at once; no per-task review; one integration pass (controller is the only test runner); final review mandatory`.
+- Exit 3, 4 or 5 (a task lacks Interfaces, the plan lacks `typecheck:`/`unit:` lines, or a lane has a dependency cycle): announce `Mode: blitz — falling back to ultra: <plan-lanes stderr>` and run Ultra Mode for the whole plan. Never carve out single tasks.
+- Exit 2 (usage error or missing plan): stop and report it.
+
+**2. Baseline.** Record `BLITZ_BASE=$(git rev-parse HEAD)` and save `git status --porcelain` to `<workspace>/blitz-baseline.txt`. The repo may already have untracked files. Before dispatch, check every lane's Allowlist against that baseline: if any Allowlist path is already modified or untracked, stop and report it to your human partner — its pre-existing edits would be swept into a task commit at step 7.
+
+**3. Dispatch every lane in ONE message.** Each lane runs `superpowers-on-steroids:caveman-implementer-<effort>` on `implementer: judgment=`: a lane is multi-task work against code being written concurrently. The dispatch carries the lane brief path, a report path (`lane-<X>-report.md`), and the line "Blitz lane: no tests, no typecheck, no git." Answer questions as they arrive. A BLOCKED or NEEDS_CONTEXT lane goes through Handling Implementer Status; its re-dispatch — to the same lane or a fresh one — carries that same line, "Blitz lane: no tests, no typecheck, no git.", or it falls back to its default contract (TDD, run tests, commit). Integration waits until every lane is DONE or DONE_WITH_CONCERNS.
+
+**4. Stray check.** Take `git status --porcelain` again and drop the baseline entries. A changed path outside every lane's Allowlist is a stray. Read its diff and decide: attribute it to a task's commit-map entry, or revert it. Record the decision in the ledger. Never revert a stray automatically — it may be a needed seam fix.
+
+**5. Integration run.** The controller is the only test runner for the whole blitz run. Check `ps` for stray jest, vitest, temporal or test-server processes and wait for or kill them. Run the `typecheck:` command from `lanes.md` unless it is `none`. Run the `unit:` command once, capped: jest `--maxWorkers=2`, vitest `--maxWorkers=2`, or the equivalent flag for other runners. Redirect output to workspace files and read only the failure summaries.
+
+**6. Integration fix loop (max 3 rounds).** Map each failure to the lane whose Allowlist holds the failing file; a seam failure across lanes goes to the consumer-side lane.
+- Rounds 1–2: resume the owning lanes in parallel with only their failures and the line "Blitz integration fix: still no tests, no git." If a lane agent is gone, dispatch a fresh `caveman-implementer-<effort>` on `judgment=` with its lane brief and failures, and give it both "Blitz lane: no tests, no typecheck, no git." and "Blitz integration fix: still no tests, no git." — note it in the ledger. Between rounds, re-run typecheck and only the failing specs, capped.
+- Round 3: dispatch `superpowers-on-steroids:caveman-implementer-high` on `final-reviewer: model=` with every remaining failure, the lane reports and `lanes.md`. It is now the only test runner, and its brief carries verbatim: "Blitz integration round 3: you may run tests; no git writes." plus "Cap test runner parallelism: jest `--maxWorkers=2`, vitest `--maxWorkers=2`, equivalent flags for other runners. You are the only agent running tests. Check `ps` for stray jest/vitest/temporal/test-server processes first and wait or kill them." It makes no git writes.
+- Still red after round 3: BLOCKED. Report the failure list to your human partner. Commit nothing while red.
+- Green: run typecheck and the full capped `unit:` command one last time, because a fix can regress a spec that was not re-run.
+
+**7. Commits.** Before committing, confirm `git rev-parse HEAD` still equals `BLITZ_BASE`. If it does not — some lane committed mid-run — stop and report it to your human partner: the commit map in step 1 assumes nothing touched HEAD since baseline. Otherwise follow the `lanes.md` commit map in plan order. For each task: `git add -- <paths>`, then `git commit -m "<message>" -- <paths>`. The add is needed because a pathspec commit skips new untracked files. Write a Conventional message from the task title where the map says `<none — controller writes>`. A task marked `folded into Task M` gets no commit, only a ledger note. Integration fixes ride in the commit of the task that owns the file. Ledger line per task: `Task N: complete (blitz lane X, commit <sha7>)`.
+
+**8. Final whole-branch review — mandatory.** It is the only review gate blitz keeps. Run `scripts/review-package MERGE_BASE HEAD` and dispatch the final reviewer as in requesting-code-review. Add the ultra line "Tests assert the contract's behaviours, not the implementation's incidental output; flag tautological tests as Important." and the seam line "Blitz: no per-task review ran. Check every cross-lane seam against the plan's Interfaces (names, types, optional vs required, error behaviour); flag drift as Important." Findings go to one fix subagent; it is then the only test runner and gets the caps verbatim. Then run verification-before-completion and finishing-a-development-branch.
 
 ## Handling Implementer Status
 
@@ -456,6 +492,10 @@ and is re-read on every later turn. Hand artifacts over as files:
   (brief `…/task-N-brief.md` → report `…/task-N-report.md`) and put it in
   the dispatch prompt. The implementer writes the full report there and
   returns only status, commits, a one-line test summary, and concerns.
+- **Blitz lanes:** `scripts/plan-lanes PLAN_FILE` writes `lanes.md` and one
+  `lane-<X>-brief.md` per lane into the plan's workspace. Dispatch each lane
+  with its brief path and a report path `lane-<X>-report.md`; the commit
+  map in `lanes.md` drives the commits after integration.
 - **Reviewer inputs:** the task reviewer gets three paths — the same brief
   file, the report file, and the review package — plus the global
   constraints that bind the task.

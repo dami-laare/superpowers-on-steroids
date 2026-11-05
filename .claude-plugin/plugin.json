@@ -1,7 +1,7 @@
 {
   "name": "superpowers-on-steroids",
   "description": "Fork of the Superpowers core skills library with an autonomous, agent-team brainstorming skill: a proxy agent brainstorms with subagents instead of round-tripping to the user",
-  "version": "7.1.1",
+  "version": "7.2.0",
   "homepage": "https://github.com/obra/superpowers",
   "repository": "https://github.com/obra/superpowers",
   "license": "MIT",
@@ -21,9 +21,10 @@
       "options": [
         "standard",
         "fast",
-        "ultra"
+        "ultra",
+        "blitz"
       ],
-      "description": "standard = inline prompt templates. fast = dispatch the bundled caveman-* agents: terser reports, configurable effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. ultra (experimental) = fast plus a parallel test-writer lane: a judgment task's tests are written from the plan's contract alongside its implementation, then each task runs a test-and-fix converge loop; TDD RED evidence is dropped for those tasks. Env override: SUPERPOWERS_MODE (env wins).",
+      "description": "standard = inline prompt templates. fast = dispatch the bundled caveman-* agents: terser reports, configurable effort, smaller dispatch payloads, plan-tiered task review, 3-round fix loop. ultra (experimental) = fast plus a parallel test-writer lane: a judgment task's tests are written from the plan's contract alongside its implementation, then each task runs a test-and-fix converge loop; TDD RED evidence is dropped for those tasks. blitz (experimental) = every task at once in file-ownership lanes, no per-task tests or review, one integration pass and a mandatory final review; not for migrations with backfills or auth-critical work. Env override: SUPERPOWERS_MODE (env wins).",
       "default": "standard"
     },
     "implementer_mechanical_model": {

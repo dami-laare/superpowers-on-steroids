@@ -281,6 +281,17 @@ assert_command_output \
     CLAUDE_PLUGIN_OPTION_MODE=ultra \
     bash "$HOOK_UNDER_TEST"
 
+blitz_home="$(make_home config-blitz)"
+assert_command_output \
+    "mode=blitz emits mode: blitz with role lines unchanged" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: blitz"$'\037'"implementer: mechanical=haiku judgment=sonnet effort=low"$'\037'"test-writer: model=sonnet effort=low" \
+    "warning:" \
+    "$blitz_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=blitz \
+    bash "$HOOK_UNDER_TEST"
+
 roles_home="$(make_home config-roles)"
 assert_command_output \
     "plugin options set each role's model and effort" \
@@ -404,6 +415,18 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_PLUGIN_OPTION_MODE=fast \
     SUPERPOWERS_MODE=ultra \
+    bash "$HOOK_UNDER_TEST"
+
+env_blitz_home="$(make_home config-env-blitz)"
+assert_command_output \
+    "SUPERPOWERS_MODE=blitz wins over an ultra plugin option" \
+    "nested" \
+    "<SUPERPOWERS_CONFIG>"$'\n'"mode: blitz" \
+    "mode: ultra" \
+    "$env_blitz_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_OPTION_MODE=ultra \
+    SUPERPOWERS_MODE=blitz \
     bash "$HOOK_UNDER_TEST"
 
 env_shadow_home="$(make_home config-env-shadow)"

@@ -161,6 +161,17 @@ git commit -m "feat: add specific feature"
 
 A judgment task that cannot meet both runs as a single TDD implementer. Mark it `**Review tier:** judgment (fast fallback)`.
 
+## Blitz Mode Plans
+
+`mode: blitz` includes all of ultra mode. Every ultra-mode instruction applies to blitz too, plus the blitz additions in this section.
+
+Blitz execution runs every task at once in file-ownership lanes, computed by subagent-driven-development's `scripts/plan-lanes`, then integrates once. Implementers import each other's symbols before those exist, so the plan's contracts carry the whole run. When `<SUPERPOWERS_CONFIG>` says `mode: blitz`:
+- **Every task**, transcription included, has an **Interfaces:** block with a `- Consumes:` line and a `- Produces:` line (`none` is allowed), and Produces states behaviours, not just names.
+- **Shared append-only files** — barrel exports, migration journals, registries that several tasks only add lines to — are marked on every task that lists them: ``- Modify: `src/index.ts` (shared)``. One lane owns the file and applies every task's edits to it. A file that tasks edit in overlapping regions stays unmarked; those tasks then share a lane.
+- **Global Constraints** names both integration commands, each on its own line: ``- typecheck: `<command>` `` (or `- typecheck: none`) and ``- unit: `<command>` ``.
+
+Keep the Execution Waves map: if `plan-lanes` rejects the plan, execution falls back to ultra and runs the waves. Keep every task's Step 5 commit message: the controller makes the commits after integration and uses them.
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
@@ -186,6 +197,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **5. Tier claims:** For every task marked `Review tier: transcription`, confirm all five criteria hold — complete code in the steps, ≤2 non-test files created or edited, no new public interface, no schema/auth/payment/concurrency touch, covering tests written out. Demote any task that fails one criterion to `judgment`. A missing field is read as `judgment` at execution time, so fill it in for every task.
 
 **6. Ultra contracts:** In `mode: ultra`, every judgment task has a disjoint Test path and a behavioural Produces line, or is marked `(fast fallback)`.
+
+**7. Blitz contracts:** In `mode: blitz`, every task has an Interfaces block with Consumes and Produces lines; every file several tasks only append to is marked `(shared)` on each of them, and no file edited in overlapping regions is marked; Global Constraints has `- typecheck:` and `- unit:` lines.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 

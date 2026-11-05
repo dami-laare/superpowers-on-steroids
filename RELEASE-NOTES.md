@@ -1,5 +1,38 @@
 # Superpowers Release Notes
 
+## v7.2.0 (2026-11-05)
+
+### Blitz mode (experimental)
+
+- **What.** `mode: blitz` (plugin option or `SUPERPOWERS_MODE=blitz`) runs
+  every plan task at once. A new `plan-lanes` script groups tasks that share
+  a file into at most 6 lanes; each lane is one implementer that runs its
+  tasks in dependency order, imports other lanes' symbols as the plan's
+  Interfaces describe them, and runs no tests and no git. The controller
+  then does one integration pass as the only test runner (typecheck, one
+  capped unit run, a fix loop of at most 3 rounds), commits per task from a
+  commit map, and runs a mandatory final whole-branch review.
+- **Trade-off.** Blitz gives up TDD red-before-green, per-task review gates,
+  early detection of a wrong Interfaces contract, and bisectable history
+  (intermediate commits may not build alone). The plan's contracts decide
+  how well it goes. Do not use it for migrations with data backfills,
+  security- or auth-critical changes, or vague plans. A plan without
+  Interfaces on every task, or without `typecheck:`/`unit:` lines in Global
+  Constraints, falls back to ultra as a whole.
+- **Config.** No new keys or roles. Lanes reuse
+  `caveman-implementer-<effort>` on the judgment model; the implementer
+  agents learned a "blitz lane" clause. Plans mark append-only shared files
+  (barrels, migration journals) with `(shared)` so one lane owns them.
+- **Not yet done (recommended next).** A measured blitz vs ultra acceptance
+  run, and worktree-per-lane isolation. Blitz stays experimental until that
+  run exists.
+
+### Internal
+
+- Tests cover the new mode value, `plan-lanes` (union, shared owners,
+  packing, topological order, rejects, determinism), the implementer clause,
+  and the blitz superset rule in each mode-aware skill.
+
 ## v7.1.1 (2026-10-28)
 
 ### Fixes

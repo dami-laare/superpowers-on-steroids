@@ -1,0 +1,536 @@
+#!/usr/bin/env bash
+# Partition an implementation plan into blitz-mode file-ownership lanes:
+# groups of tasks that touch overlapping files, each with its own commit
+# order and an allowlist of the paths it may edit. Deterministic — same
+# plan and MAX_LANES always produce byte-identical lanes.md and lane briefs,
+# computed by two POSIX-awk passes over the plan's structure (no bash
+# associative arrays, no reliance on hash iteration order).
+#
+# Usage: plan-lanes PLAN_FILE [MAX_LANES]
+# MAX_LANES defaults to 6, must be an integer 1-26 (one letter per lane).
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "plan-lanes: usage: plan-lanes PLAN_FILE [MAX_LANES]" >&2
+  exit 2
+fi
+
+plan=$1
+[ -f "$plan" ] || { echo "plan-lanes: no such plan file: $plan" >&2; exit 2; }
+
+max_lanes=6
+if [ $# -eq 2 ]; then
+  max_lanes=$2
+  case "$max_lanes" in
+    ''|*[!0-9]*) echo "plan-lanes: MAX_LANES must be an integer 1-26: $max_lanes" >&2; exit 2 ;;
+  esac
+  if [ "$max_lanes" -lt 1 ] || [ "$max_lanes" -gt 26 ]; then
+    echo "plan-lanes: MAX_LANES must be 1-26: $max_lanes" >&2
+    exit 2
+  fi
+fi
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+records="$tmp/records.tsv"
+
+# --- Phase 1: one awk pass over the plan, emitting tab-separated records. ---
+PARSE_AWK='
+function strip_path(p) {
+  gsub(/:[0-9]+(-[0-9]+)?$/, "", p)
+  while (p ~ /^\.\//) p = substr(p, 3)
+  while (p ~ /\/\//) gsub(/\/\//, "/", p)
+  sub(/\/$/, "", p)
+  return p
+}
+function value_of(rest) {
+  if (substr(rest, 1, 1) == "`") {
+    idx = index(substr(rest, 2), "`")
+    return "`" substr(rest, 2, idx - 1) "`"
+  }
+  return "none"
+}
+BEGIN { infence = 0; curtask = 0; inGC = 0 }
+{
+  line = $0
+  if (line ~ /^```/) { infence = !infence; next }
+
+  if (!infence) {
+    if (line ~ /^#+[ \t]+Task[ \t]+[0-9]+/) {
+      match(line, /Task[ \t]+[0-9]+/)
+      s = substr(line, RSTART, RLENGTH)
+      match(s, /[0-9]+/)
+      curtask = substr(s, RSTART, RLENGTH) + 0
+      if (!seen_task[curtask]) { seen_task[curtask] = 1; print "T\t" curtask }
+    }
+
+    if (line ~ /^## /) {
+      inGC = (line ~ /^## Global Constraints/) ? 1 : 0
+    } else if (inGC) {
+      if (match(line, /^(- )?typecheck:[ \t]*/)) {
+        print "C\ttypecheck\t" value_of(substr(line, RSTART + RLENGTH))
+      } else if (match(line, /^(- )?unit:[ \t]*/)) {
+        print "C\tunit\t" value_of(substr(line, RSTART + RLENGTH))
+      }
+    }
+
+    if (curtask > 0) {
+      if (line ~ /^[ \t]*- (Create|Modify|Test):[ \t]*/) {
+        idx1 = index(line, "`")
+        rest = substr(line, idx1 + 1)
+        idx2 = index(rest, "`")
+        path = strip_path(substr(rest, 1, idx2 - 1))
+        after = substr(rest, idx2 + 1)
+        shared = (index(after, "(shared)") > 0) ? 1 : 0
+        print "F\t" curtask "\t" path "\t" shared
+      }
+      if (line ~ /^\*\*Depends on:\*\*/) {
+        tmpd = line
+        while (match(tmpd, /[0-9]+/)) {
+          num = substr(tmpd, RSTART, RLENGTH) + 0
+          if (num != curtask) print "D\t" curtask "\t" num
+          tmpd = substr(tmpd, RSTART + RLENGTH)
+        }
+      }
+      if (line ~ /^\*\*Interfaces:\*\*/) has_interfaces[curtask] = 1
+      if (line ~ /^[ \t]*- Consumes:/) has_consumes[curtask] = 1
+      if (line ~ /^[ \t]*- Produces:/) has_produces[curtask] = 1
+    }
+  }
+
+  if (curtask > 0 && !have_msg[curtask]) {
+    p = index(line, "git commit -m \"")
+    if (p > 0) {
+      rest = substr(line, p + length("git commit -m \""))
+      q = index(rest, "\"")
+      print "M\t" curtask "\t" substr(rest, 1, q - 1)
+      have_msg[curtask] = 1
+    }
+  }
+}
+END {
+  for (t in seen_task) {
+    ok = (has_interfaces[t] && has_consumes[t] && has_produces[t]) ? 1 : 0
+    print "I\t" t "\t" ok
+  }
+}
+'
+
+awk "$PARSE_AWK" "$plan" > "$records"
+
+# --- Validate rules 4 and 5 before computing anything (exit 3 / exit 4). ---
+bad_task="$(awk -F'\t' '$1 == "I" && $3 == 0 { print $2 }' "$records" | LC_ALL=C sort -n | head -1)"
+if [ -n "$bad_task" ]; then
+  echo "plan-lanes: Task $bad_task is missing a **Interfaces:** block with both a Consumes: and a Produces: line" >&2
+  exit 3
+fi
+
+has_typecheck="$(awk -F'\t' '$1 == "C" && $2 == "typecheck" { print "1"; exit }' "$records")"
+has_unit="$(awk -F'\t' '$1 == "C" && $2 == "unit" { print "1"; exit }' "$records")"
+if [ -z "$has_typecheck" ]; then
+  echo "plan-lanes: ## Global Constraints is missing a typecheck: line" >&2
+  exit 4
+fi
+if [ -z "$has_unit" ]; then
+  echo "plan-lanes: ## Global Constraints is missing a unit: line" >&2
+  exit 4
+fi
+
+# --- Phase 2: compute lanes, allowlists, do-not-touch, duties and the
+# commit map over the records from phase 1. ---
+ENGINE_AWK='
+function find(x) {
+  root = x
+  while (parent[root] != root) root = parent[root]
+  while (parent[x] != root) { nxt = parent[x]; parent[x] = root; x = nxt }
+  return root
+}
+function union(a, b) {
+  ra = find(a); rb = find(b)
+  if (ra == rb) return
+  if (ra < rb) parent[rb] = ra
+  else parent[ra] = rb
+}
+function prefix_of(p,    parts, n) {
+  n = split(p, parts, "/")
+  if (n < 2) return p
+  return parts[1] "/" parts[2]
+}
+function add_prefix(setname, idx, p) {
+  if ((setname, idx, p) in pfx_seen) return
+  pfx_seen[setname, idx, p] = 1
+  pfx_count[setname, idx]++
+  pfx_list[setname, idx, pfx_count[setname, idx]] = p
+}
+function letter(i) { return sprintf("%c", 64 + i) }
+
+BEGIN { SEP = sprintf("%c", 31) }
+
+$1 == "T" { n = $2 + 0; if (!is_task[n]) { is_task[n] = 1; ntasks++; tasklist[ntasks] = n } }
+$1 == "F" {
+  n = $2 + 0; path = $3; sh = $4 + 0
+  files_count[n]++
+  files_path[n, files_count[n]] = path
+  if (sh) path_shared[path] = 1
+}
+$1 == "D" { nedges++; edge_from[nedges] = $3 + 0; edge_to[nedges] = $2 + 0 }
+$1 == "M" { msg[$2 + 0] = $3 }
+$1 == "C" { if ($2 == "typecheck") tc_val = $3; else if ($2 == "unit") unit_val = $3 }
+
+END {
+  # sort tasklist ascending (insertion sort; ntasks is small)
+  for (i = 2; i <= ntasks; i++) {
+    key = tasklist[i]; j = i - 1
+    while (j >= 1 && tasklist[j] > key) { tasklist[j+1] = tasklist[j]; j-- }
+    tasklist[j+1] = key
+  }
+
+  # Pass A: distinct normalised paths in listing order, union-find init.
+  npaths = 0
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    parent[n] = n
+    for (i = 1; i <= files_count[n]; i++) {
+      p = files_path[n, i]
+      if (!path_seen[p]) { path_seen[p] = 1; npaths++; pathlist[npaths] = p }
+    }
+  }
+
+  # Pass B: union tasks sharing a non-shared path (single pass, first-task wins).
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    for (i = 1; i <= files_count[n]; i++) {
+      p = files_path[n, i]
+      if (path_shared[p]) continue
+      if (!first_task_for_path[p]) first_task_for_path[p] = n
+      else union(first_task_for_path[p], n)
+    }
+  }
+
+  # Pass C: component discovery + each components own prefix set + task list.
+  numroots = 0
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    r = find(n)
+    comp_of[n] = r
+    if (!root_seen[r]) { root_seen[r] = 1; numroots++; rootlist[numroots] = r }
+    comp_count[r]++
+    comp_task_n[r, comp_count[r]] = n
+    for (i = 1; i <= files_count[n]; i++) {
+      p = files_path[n, i]
+      if (path_shared[p]) continue
+      add_prefix("comp", r, prefix_of(p))
+    }
+  }
+
+  # Sort roots: count desc, then root (== min task number) asc.
+  for (i = 1; i <= numroots; i++) sorted_root[i] = rootlist[i]
+  for (i = 1; i <= numroots; i++) {
+    best = i
+    for (j = i + 1; j <= numroots; j++) {
+      rb = sorted_root[best]; rj = sorted_root[j]
+      if (comp_count[rj] > comp_count[rb] || (comp_count[rj] == comp_count[rb] && rj < rb)) best = j
+    }
+    if (best != i) { t = sorted_root[i]; sorted_root[i] = sorted_root[best]; sorted_root[best] = t }
+  }
+
+  numlanes = (numroots < maxlanes) ? numroots : maxlanes
+
+  for (i = 1; i <= numlanes; i++) {
+    r = sorted_root[i]
+    lane_count[i] = comp_count[r]
+    for (k = 1; k <= comp_count[r]; k++) {
+      lane_task_count[i]++
+      lane_task_n[i, lane_task_count[i]] = comp_task_n[r, k]
+    }
+    for (k = 1; k <= pfx_count["comp", r]; k++) add_prefix("lane", i, pfx_list["comp", r, k])
+  }
+
+  for (ci = numlanes + 1; ci <= numroots; ci++) {
+    r = sorted_root[ci]
+    match_count = 0; best_lane = 0; best_count = -1
+    for (j = 1; j <= numlanes; j++) {
+      intersects = 0
+      for (k = 1; k <= pfx_count["comp", r]; k++) {
+        if ((("lane", j, pfx_list["comp", r, k]) in pfx_seen)) { intersects = 1; break }
+      }
+      if (intersects) {
+        match_count++
+        if (best_lane == 0 || lane_count[j] < best_count) { best_lane = j; best_count = lane_count[j] }
+      }
+    }
+    if (best_lane == 0) {
+      for (j = 1; j <= numlanes; j++) {
+        if (best_lane == 0 || lane_count[j] < best_count) { best_lane = j; best_count = lane_count[j] }
+      }
+    }
+    lane_count[best_lane] += comp_count[r]
+    for (k = 1; k <= comp_count[r]; k++) {
+      lane_task_count[best_lane]++
+      lane_task_n[best_lane, lane_task_count[best_lane]] = comp_task_n[r, k]
+    }
+    for (k = 1; k <= pfx_count["comp", r]; k++) add_prefix("lane", best_lane, pfx_list["comp", r, k])
+  }
+
+  # task -> lane index, and ascending per-lane task membership.
+  for (i = 1; i <= numlanes; i++)
+    for (k = 1; k <= lane_task_count[i]; k++)
+      task2lane[lane_task_n[i, k]] = i
+
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    li = task2lane[n]
+    lsorted_count[li]++
+    lsorted_n[li, lsorted_count[li]] = n
+  }
+
+  # intra-lane indegree / adjacency from dependency edges.
+  for (e = 1; e <= nedges; e++) {
+    f = edge_from[e]; t = edge_to[e]
+    if (!(f in task2lane) || !(t in task2lane)) continue
+    if (task2lane[f] != task2lane[t]) continue
+    indegree[t]++
+    adj_count[f]++
+    adj_n[f, adj_count[f]] = t
+  }
+
+  # per-lane topological order, lowest ready task number first.
+  for (i = 1; i <= numlanes; i++) {
+    done = 0
+    for (k = 1; k <= lsorted_count[i]; k++) {
+      found = 0
+      for (m = 1; m <= lsorted_count[i]; m++) {
+        cand = lsorted_n[i, m]
+        if (selected[cand]) continue
+        if (indegree[cand] + 0 == 0) { found = cand; break }
+      }
+      if (!found) { print "STATUS\tCYCLE\t" letter(i); exit }
+      selected[found] = 1
+      done++
+      order_count[i]++
+      order_n[i, order_count[i]] = found
+      for (m = 1; m <= adj_count[found]; m++) indegree[adj_n[found, m]]--
+    }
+  }
+
+  print "STATUS\tOK"
+  print "GC\t" tc_val "\t" unit_val
+
+  for (i = 1; i <= numlanes; i++) {
+    line = "LANE\t" letter(i) "\t"
+    for (k = 1; k <= order_count[i]; k++) line = line (k > 1 ? " " : "") order_n[i, k]
+    print line
+  }
+
+  # shared-path ownership: lowest-numbered listing task, in its lane.
+  for (pi = 1; pi <= npaths; pi++) {
+    p = pathlist[pi]
+    if (!path_shared[p]) continue
+    for (ti = 1; ti <= ntasks; ti++) {
+      n = tasklist[ti]
+      found_owner = 0
+      for (i = 1; i <= files_count[n]; i++) {
+        if (files_path[n, i] == p) { found_owner = 1; break }
+      }
+      if (found_owner) { owner_task[p] = n; owner_lane[p] = task2lane[n]; break }
+    }
+  }
+
+  # allowlists: non-shared paths of the lanes tasks, plus shared paths it owns.
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    li = task2lane[n]
+    for (i = 1; i <= files_count[n]; i++) {
+      p = files_path[n, i]
+      if (path_shared[p]) continue
+      if (!((li, p) in allow_seen)) { allow_seen[li, p] = 1; allow_count[li]++; allow_list[li, allow_count[li]] = p }
+    }
+  }
+  for (pi = 1; pi <= npaths; pi++) {
+    p = pathlist[pi]
+    if (!path_shared[p]) continue
+    li = owner_lane[p]
+    if (!((li, p) in allow_seen)) { allow_seen[li, p] = 1; allow_count[li]++; allow_list[li, allow_count[li]] = p }
+    print "OWN\t" letter(li) "\t" p
+  }
+  for (i = 1; i <= numlanes; i++)
+    for (k = 1; k <= allow_count[i]; k++)
+      print "ALLOW\t" letter(i) "\t" allow_list[i, k]
+
+  # do-not-touch: a lane names a shared path owned by another lane.
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    li = task2lane[n]
+    for (i = 1; i <= files_count[n]; i++) {
+      p = files_path[n, i]
+      if (!path_shared[p]) continue
+      if (owner_lane[p] == li) continue
+      if (!((li, p) in dnt_seen)) { dnt_seen[li, p] = 1; print "DNT\t" letter(li) "\t" p "\t" letter(owner_lane[p]) }
+    }
+  }
+
+  # shared-file duties: foreign tasks (other lanes) that list an owned path.
+  for (pi = 1; pi <= npaths; pi++) {
+    p = pathlist[pi]
+    if (!path_shared[p]) continue
+    oi = owner_lane[p]
+    for (ti = 1; ti <= ntasks; ti++) {
+      n = tasklist[ti]
+      for (i = 1; i <= files_count[n]; i++) {
+        if (files_path[n, i] != p) continue
+        if (task2lane[n] == oi) continue
+        print "DUTY\t" letter(oi) "\t" p "\t" n
+      }
+    }
+  }
+
+  # commit map: each path belongs to the highest-numbered task listing it.
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    for (i = 1; i <= files_count[n]; i++) highest_task[files_path[n, i]] = n
+  }
+  for (pi = 1; pi <= npaths; pi++) {
+    p = pathlist[pi]
+    owner = highest_task[p]
+    if (!((owner, p) in cm_seen)) { cm_seen[owner, p] = 1; cm_count[owner]++; cm_list[owner, cm_count[owner]] = p }
+  }
+  for (ti = 1; ti <= ntasks; ti++) {
+    n = tasklist[ti]
+    m = (n in msg) ? msg[n] : "<none — controller writes>"
+    if (cm_count[n] + 0 > 0) {
+      line = "COMMIT\t" n "\t" m
+      for (k = 1; k <= cm_count[n]; k++) line = line "\t" cm_list[n, k]
+      print line
+    } else if (files_count[n] + 0 > 0) {
+      target = highest_task[files_path[n, 1]]
+      print "FOLD\t" n "\t" target
+    } else {
+      print "COMMIT\t" n "\t" m
+    }
+  }
+}
+'
+
+proto="$tmp/proto.tsv"
+awk -F'\t' -v maxlanes="$max_lanes" "$ENGINE_AWK" "$records" > "$proto"
+
+status_line="$(head -1 "$proto")"
+status_word="$(printf '%s' "$status_line" | awk -F'\t' '{print $2}')"
+if [ "$status_word" = "CYCLE" ]; then
+  cyc_lane="$(printf '%s' "$status_line" | awk -F'\t' '{print $3}')"
+  echo "plan-lanes: cycle in Depends-on among lane $cyc_lane tasks" >&2
+  exit 5
+fi
+
+# --- Render outputs, only now that computation has fully succeeded. ---
+dir="$("$SELF_DIR/sdd-workspace" "$plan")"
+rm -f "$dir"/lane-*-brief.md
+
+base="$(basename "$plan" .md)"
+
+tc_val="$(awk -F'\t' '$1=="GC"{print $2}' "$proto")"
+unit_val="$(awk -F'\t' '$1=="GC"{print $3}' "$proto")"
+
+lane_rows=()
+while IFS= read -r row_line; do lane_rows+=("$row_line"); done < <(awk -F'\t' '$1=="LANE"{print}' "$proto")
+
+lanes_md="$dir/lanes.md"
+{
+  printf '# Blitz lanes — %s\n\n' "$base"
+  if [ "$tc_val" = "none" ]; then
+    printf -- '- typecheck: none\n'
+  else
+    printf -- '- typecheck: %s\n' "$tc_val"
+  fi
+  printf -- '- unit: %s\n\n' "$unit_val"
+  printf '## Lanes\n\n'
+  printf '| Lane | Tasks | Files | Owns shared |\n'
+  printf '|---|---|---|---|\n'
+  for row in "${lane_rows[@]}"; do
+    L="$(printf '%s' "$row" | awk -F'\t' '{print $2}')"
+    tasks_sp="$(printf '%s' "$row" | awk -F'\t' '{print $3}')"
+    tasks_csv="$(printf '%s' "$tasks_sp" | sed 's/ /, /g')"
+    files_n="$(awk -F'\t' -v l="$L" '$1=="ALLOW" && $2==l' "$proto" | wc -l | tr -d ' ')"
+    own_list="$(awk -F'\t' -v l="$L" '$1=="OWN" && $2==l {print "`"$3"`"}' "$proto" | LC_ALL=C sort)"
+    if [ -z "$own_list" ]; then
+      own_csv="-"
+    else
+      own_csv="$(printf '%s\n' "$own_list" | tr '\n' ' ' | sed 's/ $//')"
+    fi
+    printf '| %s | %s | %s | %s |\n' "$L" "$tasks_csv" "$files_n" "$own_csv"
+  done
+  printf '\n## Commit map\n\n'
+  printf '| Task | Message | Paths |\n'
+  printf '|---|---|---|\n'
+  awk -F'\t' '$1=="COMMIT"{print $2"\t"$0} $1=="FOLD"{print $2"\t"$0}' "$proto" | LC_ALL=C sort -t $'\t' -k1,1n | while IFS=$'\t' read -r _ kind task rest1 rest2; do
+    if [ "$kind" = "FOLD" ]; then
+      printf '| %s | folded into Task %s | - |\n' "$task" "$rest1"
+    else
+      msg="$rest1"
+      paths_csv="-"
+      if [ -n "$rest2" ]; then
+        paths_csv="$(printf '%s\n' "$rest2" | tr '\t' '\n' | sed 's/^/`/; s/$/`/' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
+      fi
+      printf '| %s | %s | %s |\n' "$task" "$msg" "$paths_csv"
+    fi
+  done
+} > "$lanes_md"
+
+for row in "${lane_rows[@]}"; do
+  L="$(printf '%s' "$row" | awk -F'\t' '{print $2}')"
+  tasks_sp="$(printf '%s' "$row" | awk -F'\t' '{print $3}')"
+  tasks_csv="$(printf '%s' "$tasks_sp" | sed 's/ /, /g')"
+  brief="$dir/lane-$L-brief.md"
+
+  allow_list="$(awk -F'\t' -v l="$L" '$1=="ALLOW" && $2==l {print $3}' "$proto" | LC_ALL=C sort)"
+  dnt_lines="$(awk -F'\t' -v l="$L" '$1=="DNT" && $2==l {print $3"\t"$4}' "$proto" | LC_ALL=C sort)"
+  own_paths="$(awk -F'\t' -v l="$L" '$1=="OWN" && $2==l {print $3}' "$proto" | LC_ALL=C sort)"
+
+  {
+    printf '# Blitz lane %s — Tasks %s (in this order)\n\n' "$L" "$tasks_csv"
+    printf '## Allowlist\n\n'
+    if [ -n "$allow_list" ]; then
+      printf '%s\n' "$allow_list" | while IFS= read -r p; do printf -- '- `%s`\n' "$p"; done
+    fi
+    printf '\n'
+    if [ -n "$dnt_lines" ]; then
+      printf '## Do not touch\n\n'
+      printf '%s\n' "$dnt_lines" | while IFS=$'\t' read -r p owner; do
+        printf -- '- `%s` is owned by lane %s; skip your task'"'"'s edits to it.\n' "$p" "$owner"
+      done
+      printf '\n'
+    fi
+    printf '## Tasks\n\n'
+    first=1
+    for n in $tasks_sp; do
+      [ "$first" -eq 1 ] || printf '\n'
+      first=0
+      "$SELF_DIR/task-brief" "$plan" "$n" "$tmp/task-$n.md" > /dev/null
+      cat "$tmp/task-$n.md"
+    done
+    if [ -n "$own_paths" ]; then
+      printf '%s\n' "$own_paths" | while IFS= read -r p; do
+        duty_tasks="$(awk -F'\t' -v l="$L" -v p="$p" '$1=="DUTY" && $2==l && $3==p {print $4}' "$proto" | LC_ALL=C sort -n)"
+        if [ -n "$duty_tasks" ]; then
+          printf '\n## Shared-file duties\n\n'
+          printf 'Reference only — apply ONLY the edits to `%s`; do not touch any other file these tasks list.\n' "$p"
+          printf '%s\n' "$duty_tasks" | while IFS= read -r n; do
+            printf '\n'
+            "$SELF_DIR/task-brief" "$plan" "$n" "$tmp/task-dup-$n.md" > /dev/null
+            cat "$tmp/task-dup-$n.md"
+          done
+        fi
+      done
+    fi
+  } > "$brief"
+done
+
+for row in "${lane_rows[@]}"; do
+  L="$(printf '%s' "$row" | awk -F'\t' '{print $2}')"
+  tasks_sp="$(printf '%s' "$row" | awk -F'\t' '{print $3}')"
+  echo "lane $L: tasks $tasks_sp"
+done
+echo "wrote $lanes_md"

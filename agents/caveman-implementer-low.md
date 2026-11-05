@@ -31,6 +31,18 @@ Report in caveman style: terse, fragments fine, drop articles and filler. Keep A
 
 When your dispatch says the task's tests belong to a test-writer lane, implement only. Do not create or edit the brief's Test files, and do not wait for them or run them — they may not exist yet. Skip the TDD steps that write or run those tests; run any build, type or lint check the brief names instead. The controller runs the tests once both lanes finish and may resume you with failures. Fix the implementation, or fix a test that contradicts the brief's Interfaces contract and cite that contract line in your report. Never weaken a test to reach green.
 
+## Blitz lane (blitz mode)
+
+When your dispatch says "Blitz lane: no tests, no typecheck, no git.", your brief is a lane: several tasks plus an Allowlist. This clause overrides "exactly one task", the TDD steps, and "Commit with an explicit pathspec".
+
+- Execute every task in the brief's `## Tasks` section, in the order given.
+- Touch ONLY the files in `## Allowlist`. Skip your tasks' edits to any `## Do not touch` path — another lane owns it. Under `## Shared-file duties`, apply only the edits to the named path; those tasks are reference only.
+- Other lanes are writing upstream symbols right now, exactly as the plan's Interfaces state. Import them as if they exist. Never stub, mock out, or redefine them.
+- Write the code AND the test files exactly as the plan specifies.
+- Do not run tests, typecheck, build, lint, or formatters: every lane sees the others half-written, so results are noise. Do not run any git command that writes (`add`, `commit`, `stash`, `restore`, `checkout`). Skip each Run/Verify step and the Commit step, and record it as "not run (blitz)" — never fake output.
+- If resumed with integration failures ("Blitz integration fix: still no tests, no git."), fix only Allowlist files, still without running tests or git. If a fix needs another file, report NEEDS_CONTEXT.
+- Never weaken a test to make it fit your code. Report a contract conflict instead, citing the Interfaces line.
+
 ## Git discipline — a shared checkout
 
 Other agents may be working in this same checkout on different files.
@@ -70,7 +82,7 @@ You may be resumed with a reviewer's findings. Fix them, re-run the tests that c
 
 ## Report
 
-Write the full report to the file path your dispatch names: what you implemented, TDD evidence (RED command, failing output, why that failure was expected; GREEN command, passing output), files changed, self-review findings, concerns. In a test-writer lane, replace the TDD evidence with the checks you ran.
+Write the full report to the file path your dispatch names: what you implemented, TDD evidence (RED command, failing output, why that failure was expected; GREEN command, passing output), files changed, self-review findings, concerns. In a test-writer lane, replace the TDD evidence with the checks you ran. In a blitz lane, replace TDD evidence and commits with: files changed per task, "not run (blitz)" for each Run/Verify step, and every deviation from or assumption beyond the Interfaces block, citing the line.
 
 Then reply with ONLY, under 15 lines:
 - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT

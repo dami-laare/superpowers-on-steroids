@@ -293,21 +293,33 @@ if run_lanes dep-prose.md >/dev/null; then pass "prose Depends-on line is not a 
 
 {
     gc_both
-    simple_task 1 shared/seam.ts "Task 2 (Produces parseV2), sha256:deadbeef"
+    simple_task 1 shared/seam.ts "Task 2, parseV3"
     simple_task 2 shared/seam.ts none
+    simple_task 3 shared/seam.ts none
 } | write_plan dep-noise.md
 out="$(run_lanes dep-noise.md)" || out=""
-contains "Task 2 (Produces parseV2) noise yields only edge 2" "$WS/dep-noise/lane-A-brief.md" "# Blitz lane A — Tasks 2, 1 (in this order)"
+has_line "non-numeric noise (parseV3) is not mistaken for an edge to Task 3" "$WS/dep-noise/lane-A-brief.md" "# Blitz lane A — Tasks 2, 1, 3 (in this order)"
 
 {
     gc_both
-    simple_task 1 shared/range.ts none
+    simple_task 1 shared/range.ts "Tasks 2-4"
     simple_task 2 shared/range.ts none
     simple_task 3 shared/range.ts none
-    simple_task 4 shared/range.ts "Tasks 1-3"
+    simple_task 4 shared/range.ts none
 } | write_plan dep-range.md
 out="$(run_lanes dep-range.md)" || out=""
-has_line "Tasks 1-3 expands to edges from 1, 2 and 3" "$WS/dep-range/lanes.md" '| A | 1, 2, 3, 4 | 1 | - |'
+has_line "Tasks 2-4 expands to edges from 2, 3 and 4 into Task 1" "$WS/dep-range/lanes.md" '| A | 2, 3, 4, 1 | 1 | - |'
+
+# --- Depends-on token normalisation: trailing "." / ":" stripped, en-dash range accepted ---
+{
+    gc_both
+    simple_task 1 shared/punct.ts "Task 4., Tasks 2–3"
+    simple_task 2 shared/punct.ts none
+    simple_task 3 shared/punct.ts none
+    simple_task 4 shared/punct.ts none
+} | write_plan dep-punct.md
+out="$(run_lanes dep-punct.md)" || out=""
+has_line "trailing punctuation stripped and en-dash range accepted" "$WS/dep-punct/lanes.md" '| A | 2, 3, 4, 1 | 1 | - |'
 
 # --- commit-map message with a literal "|" is escaped, not a broken table row ---
 {
@@ -325,12 +337,26 @@ has_line "commit message with | is escaped in the table row" "$WS/pipemsg/lanes.
     printf '### Task 1: Bare one\n\n**Files:**\n- Modify: `a/x.ts`\n\n**Depends on:** none\n\n'
     printf '### Task 2: Bare two\n\n**Files:**\n- Modify: `b/y.ts`\n\n**Depends on:** none\n\n'
 } | write_plan twobad.md
-err="$(cd "$REPO" && "$PLAN_LANES" twobad.md 2>&1 >/dev/null)" || true
-if [[ "$err" == *"Task 1"* && "$err" == *"Task 2"* ]]; then
+rc=0
+err="$(cd "$REPO" && "$PLAN_LANES" twobad.md 2>&1 >/dev/null)" || rc=$?
+if [[ "$rc" -eq 3 && "$err" == *"Task 1"* && "$err" == *"Task 2"* ]]; then
     pass "exit 3 names every offending task"
 else
     fail "exit 3 names every offending task"
-    echo "    stderr: $err"
+    echo "    exit $rc (want 3); stderr: $err"
+fi
+
+# --- task-brief extraction failure exits 2 before any output file is written ---
+{
+    gc_both
+    printf '### Task 01: Weird heading\n\n**Files:**\n- Modify: `a/weird.ts`\n\n**Depends on:** none\n\n'
+    printf '**Interfaces:**\n- Consumes: none\n- Produces: `weird()` returns 1\n\n'
+} | write_plan weirdheading.md
+expect_exit "task-brief extraction failure exits 2" 2 "Task 1" "$PLAN_LANES" weirdheading.md
+if [[ ! -e "$WS/weirdheading/lanes.md" ]]; then
+    pass "task-brief extraction failure writes no lanes.md"
+else
+    fail "task-brief extraction failure writes no lanes.md"
 fi
 
 echo ""

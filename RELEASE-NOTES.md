@@ -17,8 +17,9 @@
   (intermediate commits may not build alone). The plan's contracts decide
   how well it goes. Do not use it for migrations with data backfills,
   security- or auth-critical changes, or vague plans. A plan without
-  Interfaces on every task, or without `typecheck:`/`unit:` lines in Global
-  Constraints, falls back to ultra as a whole.
+  Interfaces on every task, without `typecheck:`/`unit:` lines in Global
+  Constraints, with no tasks, or with a Depends-on cycle inside a lane, falls
+  back to ultra as a whole.
 - **Config.** No new keys or roles. Lanes reuse
   `caveman-implementer-<effort>` on the judgment model; the implementer
   agents learned a "blitz lane" clause. Plans mark append-only shared files

@@ -255,10 +255,12 @@ fi
 for skill in requesting-code-review brainstorming writing-plans; do
     assert_in_file "blitz superset rule" "$BLITZ_RULE" "$REPO_ROOT/skills/$skill/SKILL.md"
 done
+BLITZ_ROUND3_LINE="Blitz integration round 3: you may run tests; no git writes."
 for token in "## Blitz Mode" "Blitz lane: no tests, no typecheck, no git." "Mode: blitz —" \
     "falling back to ultra" "scripts/plan-lanes" "only test runner" "--maxWorkers=2" \
     "Never revert a stray automatically" "folded into Task M" "$SEAM_LINE" \
-    "implementer, blitz lane"; do
+    "implementer, blitz lane" "$BLITZ_ROUND3_LINE" "BLITZ_BASE" \
+    "is already modified or untracked"; do
     assert_in_file "blitz SDD" "$token" "$sdd_skill"
 done
 assert_in_file "blitz review" "$SEAM_LINE" "$REPO_ROOT/skills/requesting-code-review/SKILL.md"
@@ -266,7 +268,7 @@ for token in "## Blitz Mode Plans" "(shared)" "- typecheck:" "- unit:" "**7. Bli
     assert_in_file "blitz plans" "$token" "$plans_skill"
 done
 for effort in low medium high; do
-    for token in "## Blitz lane (blitz mode)" "not run (blitz)"; do
+    for token in "## Blitz lane (blitz mode)" "not run (blitz)" "$BLITZ_ROUND3_LINE"; do
         assert_in_file "blitz implementer" "$token" "$AGENTS_DIR/caveman-implementer-$effort.md"
     done
 done

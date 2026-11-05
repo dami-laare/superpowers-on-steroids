@@ -283,6 +283,56 @@ expect_exit "unit: without a backticked command exits 4" 4 "unit:" "$PLAN_LANES"
 } | write_plan badtypecheck.md
 expect_exit "typecheck: with neither backticks nor none exits 4" 4 "typecheck:" "$PLAN_LANES" badtypecheck.md
 
+# --- Depends-on parser: only pure integers and ranges before the first "(" count ---
+{
+    gc_both
+    simple_task 1 shared/notes.ts "none (reads the v1 config)"
+    simple_task 2 shared/notes.ts "none (reads the v1 config)"
+} | write_plan dep-prose.md
+if run_lanes dep-prose.md >/dev/null; then pass "prose Depends-on line is not a false cycle"; else fail "prose Depends-on line is not a false cycle"; fi
+
+{
+    gc_both
+    simple_task 1 shared/seam.ts "Task 2 (Produces parseV2), sha256:deadbeef"
+    simple_task 2 shared/seam.ts none
+} | write_plan dep-noise.md
+out="$(run_lanes dep-noise.md)" || out=""
+contains "Task 2 (Produces parseV2) noise yields only edge 2" "$WS/dep-noise/lane-A-brief.md" "# Blitz lane A — Tasks 2, 1 (in this order)"
+
+{
+    gc_both
+    simple_task 1 shared/range.ts none
+    simple_task 2 shared/range.ts none
+    simple_task 3 shared/range.ts none
+    simple_task 4 shared/range.ts "Tasks 1-3"
+} | write_plan dep-range.md
+out="$(run_lanes dep-range.md)" || out=""
+has_line "Tasks 1-3 expands to edges from 1, 2 and 3" "$WS/dep-range/lanes.md" '| A | 1, 2, 3, 4 | 1 | - |'
+
+# --- commit-map message with a literal "|" is escaped, not a broken table row ---
+{
+    printf '# Plan\n\n## Global Constraints\n\n- typecheck: `true`\n- unit: `true`\n\n'
+    printf '### Task 1: Pipe\n\n**Files:**\n- Modify: `a/pipe.ts`\n\n**Depends on:** none\n\n'
+    printf '**Interfaces:**\n- Consumes: none\n- Produces: `pipe()` returns 1\n\n'
+    printf '@@@bash\ngit commit -m "feat: b | c"\n@@@\n'
+} | write_plan pipemsg.md
+run_lanes pipemsg.md >/dev/null
+has_line "commit message with | is escaped in the table row" "$WS/pipemsg/lanes.md" '| 1 | feat: b \| c | `a/pipe.ts` |'
+
+# --- exit 3 names every offending task, not only the first ---
+{
+    gc_both
+    printf '### Task 1: Bare one\n\n**Files:**\n- Modify: `a/x.ts`\n\n**Depends on:** none\n\n'
+    printf '### Task 2: Bare two\n\n**Files:**\n- Modify: `b/y.ts`\n\n**Depends on:** none\n\n'
+} | write_plan twobad.md
+err="$(cd "$REPO" && "$PLAN_LANES" twobad.md 2>&1 >/dev/null)" || true
+if [[ "$err" == *"Task 1"* && "$err" == *"Task 2"* ]]; then
+    pass "exit 3 names every offending task"
+else
+    fail "exit 3 names every offending task"
+    echo "    stderr: $err"
+fi
+
 echo ""
 if [[ "$FAILURES" -ne 0 ]]; then
     echo "FAILED: $FAILURES assertion(s)."

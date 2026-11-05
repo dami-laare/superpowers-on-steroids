@@ -21,7 +21,8 @@ for (const [k, v] of Object.entries(defaults)) {
   const envName = "SUPERPOWERS_" + k.toUpperCase();
   if (!cfg[k].description.includes(envName)) fail(`${k}.description lacks ${envName}`);
 }
-if (JSON.stringify(cfg.mode.options) !== JSON.stringify(["standard","fast","ultra"])) fail("mode.options");
+if (JSON.stringify(cfg.mode.options) !== JSON.stringify(["standard","fast","ultra","blitz"])) fail("mode.options");
+if (!cfg.mode.description.includes("blitz (experimental)")) fail("mode.description lacks blitz (experimental)");
 if (!cfg.mode.description.includes("ultra")) fail("mode.description lacks ultra");
 for (const k of keys.filter((k) => k.endsWith("_effort"))) {
   if (JSON.stringify(cfg[k].options) !== JSON.stringify(["low","medium","high"])) fail(`${k}.options`);

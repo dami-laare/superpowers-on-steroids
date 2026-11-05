@@ -51,7 +51,7 @@ sp_accept() {
     val="$(config_value "${2:-}")"
     [ -n "$val" ] || return 0
     case "$key" in
-        mode) case "$val" in standard|fast|ultra) printf '%s' "$val" ;; esac ;;
+        mode) case "$val" in standard|fast|ultra|blitz) printf '%s' "$val" ;; esac ;;
         *_effort) case "$val" in low|medium|high) printf '%s' "$val" ;; esac ;;
         *_model) case "$val" in haiku|sonnet|opus|fable) printf '%s' "$val" ;; esac ;;
         *) printf '%s' "$val" ;;

@@ -93,8 +93,8 @@ plugin.json userConfig / SUPERPOWERS_MODE=blitz
 |---|---|---|
 | 0 | lanes computed | run blitz |
 | 2 | usage error, or a missing plan file | **hard stop**: report it; do not fall back |
-| 3 | a task lacks the Interfaces block, or its Consumes or Produces line | whole-plan fallback to ultra |
-| 4 | the `unit:` line or the `typecheck:` line is missing | whole-plan fallback to ultra |
+| 3 | the plan has no tasks, or a task lacks the Interfaces block, or its Consumes or Produces line | whole-plan fallback to ultra |
+| 4 | the `unit:` line or the `typecheck:` line is missing or malformed (`unit:` needs a backticked command; `typecheck:` a backticked command or `none`) | whole-plan fallback to ultra |
 | 5 | a Depends-on cycle among one lane's tasks | whole-plan fallback to ultra |
 
 **Algorithm.**

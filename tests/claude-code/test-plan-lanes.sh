@@ -308,7 +308,20 @@ has_line "non-numeric noise (parseV3) is not mistaken for an edge to Task 3" "$W
     simple_task 4 shared/range.ts none
 } | write_plan dep-range.md
 out="$(run_lanes dep-range.md)" || out=""
-has_line "Tasks 2-4 expands to edges from 2, 3 and 4 into Task 1" "$WS/dep-range/lanes.md" '| A | 2, 3, 4, 1 | 1 | - |'
+has_line "Tasks 2-4 Depends-on is honoured (Task 1 runs after 2, 3 and 4)" "$WS/dep-range/lanes.md" '| A | 2, 3, 4, 1 | 1 | - |'
+
+# Task 3 waits on Task 5, so Task 1 lands last only if the range expands to
+# include its middle (3). Endpoint-only parsing would give 2, 4, 1, 5, 3.
+{
+    gc_both
+    simple_task 1 shared/midrange.ts "Tasks 2-4"
+    simple_task 2 shared/midrange.ts none
+    simple_task 3 shared/midrange.ts 5
+    simple_task 4 shared/midrange.ts none
+    simple_task 5 shared/midrange.ts none
+} | write_plan dep-midrange.md
+out="$(run_lanes dep-midrange.md)" || out=""
+has_line "Tasks 2-4 expands to an edge from mid-range Task 3 into Task 1" "$WS/dep-midrange/lanes.md" '| A | 2, 4, 5, 3, 1 | 1 | - |'
 
 # --- Depends-on token normalisation: trailing "." / ":" stripped, en-dash range accepted ---
 {
